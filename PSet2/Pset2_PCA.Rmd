@@ -1,0 +1,12 @@
+---
+title: 'S&DS363 PSet #1'
+author: "David Lieberman"
+date: "February 3rd, 2019"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r}
+data <- read.csv("C:\\Users\\dil6\\Desktop\\world-development-indicators\\Indicators.csv")
+```
