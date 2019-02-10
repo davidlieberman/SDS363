@@ -62,6 +62,10 @@ CSQPlot<-function(vars,label="Chi-Square Quantile Plot"){
 }
 
 CSQPlot(data_transformed,label="Drugs")
+
+
+cleaned_drug <- data_transformed[complete.cases(data_transformed),]
+CSQPlot(cleaned_drug, label="Drug Attitudes")
 ```
 
 
