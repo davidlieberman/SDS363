@@ -12,10 +12,13 @@ knitr::opts_chunk$set(echo = TRUE)
 library(ggplot2)
 ```
 
+
 ```{r}
 data <- read.csv("https://pastebin.com/raw/z6pgskch")
+data_transformed <- log(data)
 
-data_transformed <- data
+
+
 data_transformed$regret <- log(data$regret)
 data_transformed$notuse <- log(data$notuse)
 data_transformed$psycho <- sign(data$psycho)*sqrt(abs(data$psycho))
@@ -24,17 +27,16 @@ data_transformed$noapirin <- sqrt(data$noaspirin)
 data_transformed$relationship <- sqrt(data$relationship)
 data_transformed$lessalcohol <- log(data$lessalcohol)
 
+
 QQPlot <- function(x, na.rm = TRUE){
   for (i in names(x)) {
     plots <- ggplot(x, aes_string(sample = i)) +
       stat_qq() + stat_qq_line()
     ggsave(plots, filename = paste(i, ".png", sep=""))
   }
-
 }
 
 QQPlot(data_transformed)
-
 
 
 CSQPlot<-function(vars,label="Chi-Square Quantile Plot"){
@@ -51,7 +53,6 @@ CSQPlot<-function(vars,label="Chi-Square Quantile Plot"){
      se<-(scale/gval)*sqrt(cumprob*(1-cumprob)/length(squares))
      lower<-quants-2*se
      upper<-quants+2*se
-
     plot(quants,squares,col='red',pch=19,cex=1.2,xlab="Chi-Square Quantiles",
      ylab=label,main=paste("Chi-Square Quantiles for",label),ylim=range(upper,lower, squares) , xlim=range(c(0,quants)))
     lines(c(0,100),c(0,100),col=1)
@@ -64,19 +65,18 @@ CSQPlot<-function(vars,label="Chi-Square Quantile Plot"){
 CSQPlot(data_transformed,label="Drugs")
 
 
-cleaned_drug <- data_transformed[complete.cases(data_transformed),]
-CSQPlot(cleaned_drug, label="Drug Attitudes")
+data_transformed <- data_transformed[complete.cases(data_transformed),]
+CSQPlot(data_transformed, label="Drug Attitudes")
+
+
 ```
 
 
 
 ```{r}
 # Checking to see how effective PCA would be based on Correlation Table:
-
 round(cor(data_transformed), 2)
-
 corrplot.mixed(cor(data_transformed), lower.col="black", upper = "ellipse", tl.col = "black", number.cex=.7, order = "hclust",tl.pos = "lt", tl.cex=.7)
-
 ```
 
 ```{r}
@@ -159,55 +159,4 @@ ciscoreplot(pc1_trans,c(1,2),WBtrans[,1])
 
 #make a biplot for first two components
 biplot(pc1_trans,choices=c(1,2),pc.biplot=T)
-
-
-
-
-#############################################################
-##
-##   Environmental Attitudes Data
-##
-#############################################################
-
-
-#get data : change path to wherever you have data.
-envatt <- read.delim("http://reuningscherer.net/stat660/data/EnvAttitudes.1974.txt",header=T,sep="\t")
-
-#Keep complete cases
-envatt <- na.omit(envatt)
-
-#Notice that a matrix plot to check for linearity is useless here
-plot(envatt, pch=19, cex=.7, col='red', main="Matrix plot of Env Attitude Data")
-
-#Here is correlation plot - correlations are a bit weak!
-corrplot.mixed(cor(envatt), lower.col="black", upper = "ellipse", tl.col = "black", number.cex=.7, order = "hclust",
-               tl.pos = "lt", tl.cex=.7, main="Correlations for Transformed WB Data")
-
-
-#perform PCA
-pc3<-princomp(envatt[complete.cases(envatt),],cor=TRUE)
-
-#print results
-print(summary(pc3),digits=2,loadings=pc3$loadings,cutoff=0)
-
-#view eigenvalues (note that R gives square-root of eigenvalues)
-round(pc3$sdev^2,2)
-
-#make a scree plot with parallel analysis
-source("http://www.reuningscherer.net/STAT660/R/parallel.r.txt")
-parallelplot(pc3)
-
-
-#make scoreplot with confidence ellipse :
-#  c(1,2) specifies to use components 1 and 2
-#get function from online
-source("http://reuningscherer.net/stat660/r/ciscoreplot.R.txt")
-
-#run the function
-ciscoreplot(pc3,c(1,2),c(1:pc3$n.obs))
-
-
-#make a biplot for first two components
-
-biplot(pc3,choices=c(1,2),pc.biplot=T, cex=.7)
 ```
