@@ -1,6 +1,6 @@
 ---
 title: 'S&DS363 PSet #2'
-author: "Ryo Tamaki, David Lieberman, Ramiz Çolak, Liana Wang"
+author: "Ryo Tamaki, David Lieberman, Yavuz Ramiz Çolak, Liana Wang"
 date: "February 11th, 2019"
 output:
   html_document:
