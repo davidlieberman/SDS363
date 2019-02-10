@@ -19,13 +19,13 @@ data_transformed <- log(data)
 
 
 
-data_transformed$regret <- log(data$regret)
-data_transformed$notuse <- log(data$notuse)
-data_transformed$psycho <- sign(data$psycho)*sqrt(abs(data$psycho))
-data_transformed$stoned <- (data$stoned)
-data_transformed$noapirin <- sqrt(data$noaspirin)
-data_transformed$relationship <- sqrt(data$relationship)
-data_transformed$lessalcohol <- log(data$lessalcohol)
+#data_transformed$regret <- log(data$regret)
+#data_transformed$notuse <- log(data$notuse)
+#data_transformed$psycho <- sign(data$psycho)*sqrt(abs(data$psycho))
+#data_transformed$stoned <- (data$stoned)
+#data_transformed$noapirin <- sqrt(data$noaspirin)
+#data_transformed$relationship <- sqrt(data$relationship)
+#data_transformed$lessalcohol <- log(data$lessalcohol)
 
 
 QQPlot <- function(x, na.rm = TRUE){
