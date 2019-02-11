@@ -1,28 +1,28 @@
 ---
-title: 'S&DS363 PSet #2'
-author: "Ryo Tamaki, David Lieberman, Ramiz Çolak, Liana Wang"
-date: "February 11th, 2019"
-output:
-  html_document:
-    df_print: paged
+title: "Problem Set 2"
+author: "Liana Wang, Yavuz Ramiz Çolak, Ryo Tamaki, David Lieberman"
+date: "2/7/2019"
+output: html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(ggplot2)
+library(tidyr)
+library(corrplot)
+library(mvtnorm) # References rmvnorm()
+library(ellipse) # References ellipse()
+library(ggfortify)
 ```
+
+## PROBLEM 1
+1). First, discuss whether your data seems to have a multivariate normal distribution. Make univariate plots (boxplots, normal quantile plots as appropriate). Then make transformations as appropriate. You do NOT need to turn all this in, but describe what you did. THEN make a chi-square quantile plot of the data. Turn in your chi-square quantile plot as appropriate and comment on what you see. NOTE that multivariate normality is NOT a requirement for PCA to work!
 
 ```{r}
 data <- read.csv("https://pastebin.com/raw/z6pgskch")
 
-data_transformed <- data
-data_transformed$regret <- log(data$regret)
-data_transformed$notuse <- log(data$notuse)
-data_transformed$psycho <- sign(data$psycho)*sqrt(abs(data$psycho))
-data_transformed$stoned <- (data$stoned)
-data_transformed$noapirin <- sqrt(data$noaspirin)
-data_transformed$relationship <- sqrt(data$relationship)
-data_transformed$lessalcohol <- log(data$lessalcohol)
+data <- data %>% drop_na()
+data_transformed <- log(data)
 
 QQPlot <- function(x, na.rm = TRUE){
   for (i in names(x)) {
@@ -34,9 +34,14 @@ QQPlot <- function(x, na.rm = TRUE){
 }
 
 QQPlot(data_transformed)
+```
+
+Most data seems to be roughly normally distributed.For ones that did not it
+seemed like a log transformation would normalize the distribution.The QQ-plot
+confirms the
 
 
-
+```{r}
 CSQPlot<-function(vars,label="Chi-Square Quantile Plot"){
    #usually, vars is xxx$residuals or data from one group and label is for plot
      x<-cov(scale(vars),use="pairwise.complete.obs")
@@ -51,7 +56,6 @@ CSQPlot<-function(vars,label="Chi-Square Quantile Plot"){
      se<-(scale/gval)*sqrt(cumprob*(1-cumprob)/length(squares))
      lower<-quants-2*se
      upper<-quants+2*se
-
     plot(quants,squares,col='red',pch=19,cex=1.2,xlab="Chi-Square Quantiles",
      ylab=label,main=paste("Chi-Square Quantiles for",label),ylim=range(upper,lower, squares) , xlim=range(c(0,quants)))
     lines(c(0,100),c(0,100),col=1)
@@ -61,149 +65,101 @@ CSQPlot<-function(vars,label="Chi-Square Quantile Plot"){
       pch=c(19,NA))
 }
 
-CSQPlot(data_transformed,label="Drugs")
+CSQPlot(data_transformed,label="Drug Attitudes")
 ```
 
 
-
+## PROBLEM 2
+2). Compute the correlation matrix between all variables (SAS and SPSS will provide this for you as part of the PCA procedure – in SPSS, click on DESCRIPTIVES. In R use the cor() function or one of the other cool correlation plots.). Comment on relationships you do/do not observe. Do you think PCA will work well?
 ```{r}
-# Checking to see how effective PCA would be based on Correlation Table:
-
 round(cor(data_transformed), 2)
 
-corrplot.mixed(cor(data_transformed), lower.col="black", upper = "ellipse", tl.col = "black", number.cex=.7, order = "hclust",tl.pos = "lt", tl.cex=.7)
+#version 1
+corrplot(cor(data_transformed), method = "color")
 
+#version 2
+corrplot.mixed(cor(data_transformed), lower.col="black", upper = "ellipse", tl.col = "black", number.cex=.7, order = "hclust",tl.pos = "lt", tl.cex=.7)
 ```
 
+## PROBLEM 3
+3). Perform Principle components analysis using the Correlation matrix (standardized variables). Think about how many principle components to retain. To make this decision look at
+ Total variance explained by a given number of principle components
+ The ‘eigenvalue > 1’ criteria
+ The ‘scree plot elbow’ method (turn in the scree plot)
+ Parallel Analysis : think about whether this is appropriate based on what you
+discover in question 1.
+
 ```{r}
-data2 <- data[,c(names(data))]
-data2 <- data2[complete.cases(data2),]
-pc1 <- princomp(data2[,-1], cor=TRUE)
+source("http://www.reuningscherer.net/STAT660/R/parallel.r.txt")
+source("http://reuningscherer.net/stat660/r/ciscoreplot.R.txt")
+data2 <- data_transformed[,c(names(data_transformed))]
+pc1 <- princomp(data2, cor=TRUE)
 print(summary(pc1),digits=2,loadings=pc1$loadings,cutoff=0)
 round(pc1$sdev^2,2)
 ```
 
 ```{r}
-names(pc1)
 screeplot(pc1,type="lines",col="red",lwd=2,pch=19,cex=1.2,main="Scree Plot of Raw Drug Data")
 ```
 
+Recall that Parallel Analysis is appropriate if the data has a multivariate normal distribution. Based on our previous results from (1), in particular the Chi-Squared Quantile plot, we note that our data appears to have a multivariate normal distribution –– all data points (except for 2) are between the 95% confidence interval bounds with respect to the 45-degree line. Consequently, we would say that our data is appropriate for Parallel Analysis, given their multivariate normality.
 ```{r}
 source("http://www.reuningscherer.net/STAT660/R/parallel.r.txt")
 parallelplot(pc1)
 ```
 
+## PROBLEM 4
+4). For principle components you decide to retain, examine the loadings (principle components) and think about an interpretation for each retained component if possible.
 ```{r}
-source("http://reuningscherer.net/stat660/r/ciscoreplot.R.txt")
-ciscoreplot(pc1,c(1,2),data2[,1])
+unclass(pc1$loadings)[,1:3]
+```
+Note that following our interpretation of the Scree Plot with Parallel Analysis Thresholds, we decide to retain 3 principal components. Looking that the loadings, we note that the 'dope' is the primary contributor to the first principal component (Comp.1), followed closely by 'notuse.' This closeness between 'dope,' which relates to  "taking any kind of dope is a pretty dumb idea" and "even if my best friend gave me some hash, I probably wouldn't use it" because a given individual's response to those questions would likely be similar.
+
+The second principal component's (Comp.2) primary contributors are 'psycho,' 'noaspirin,' 'dangerous,' 'stoned,' and 'high.' All of the responses to these questions pertain to the safety and social admiration aspect of drug use, which explains their relative closeness in terms of weight.
+
+The third prinicpal component's (Comp.3) primary contributors are 'trip,' 'lessalcohol,' 'experience,' 'calm,' 'stupid.' The responses to these questions pertain to the prospect of positive management of drug use.
+
+## PROBLEM 5
+5) Make a score plot of the scores for at least one pair of component scores (one and two, one and three, two and three, etc). Discuss any trends/groupings you observe (probably, this will be ‘none’). As a bonus, try to make a 95% Confidence Ellipse for two of your components. You might want to also try making a bi-plot if you’re using R.
+
+
+Define the Score Plot Function
+```{r}
+scoreplot<-function(x,comps,namevec){
+  y1<-sqrt(5.99*(x$sdev[comps[1]]^2))
+  ymod<-y1-y1%%.05
+  y1vec<-c(-y1,seq(-ymod,ymod,by=0.05),y1)
+  y2vecpos<-sqrt((5.99-(y1vec^2)/x$sdev[comps[1]]^2)*x$sdev[comps[2]]^2)
+  y2vecneg<--sqrt((5.99-(y1vec^2)/x$sdev[comps[1]]^2)*x$sdev[comps[2]]^2)
+  y2vecpos[1]<-0
+  y2vecneg[1]<-0
+  y2vecpos[length(y2vecpos)]<-0
+  y2vecneg[length(y2vecneg)]<-0
+  plot(x$scores[,comps[1]],x$scores[,comps[2]],pch=19,cex=1.2,ylim=c(min(y2vecneg,x$scores[,comps[2]]),max(y2vecpos,x$scores[,comps[2]])),
+    main="PC Score Plot", xlab=paste("Scores for PC",comps[1],sep=" "), ylab=paste("Scores for PC",comps[2],sep=" "),
+    xlim=c(min(y1vec,x$scores[,comps[1]]),max(y1vec,x$scores[,comps[1]])))
+  #lines(y1vec,y2vecpos,col="White",lwd=2)
+  #lines(y1vec,y2vecneg,col="White",lwd=2)
+  outliers<-((x$scores[,comps[1]]^2)/(x$sdev[comps[1]]^2)+(x$scores[,comps[2]]^2)/(x$sdev[comps[2]]^2))>5.99
+  points(x$scores[outliers,comps[1]],x$scores[outliers,comps[2]],pch=19,cex=1.2,col="Blue")
+  text(x$scores[outliers,comps[1]],x$scores[outliers,comps[2]],col="Blue",lab=namevec[outliers])
+}
+```
+Let's make the scoreplot:
+
+```{r}
+scoreplot(pc1,c(1,2),data2[,1])
 ```
 
-#make a biplot for first two components
+Let's add the 95% confidence ellipse:
+
+```{r}
+ciscoreplot(pc1,c(1,2),data2[,1])
 biplot(pc1,choices=c(1,2),pc.biplot=T)
+```
 
+## PROBLEM 6
+6). Write a paragraph summarizing your findings, and your opinions about the effectiveness of using principle components on this data. Include evidence based on scatterplots of linearity in higher dimensional space, note any multivariate outliers in your score plot, comment on sample size relative to number of variables, etc.
+```{r}
 
-#SECOND, use PCA() function in FactoMineR on RAW World Bank Data
-#You can learn about FactoMineR in this video : https://www.youtube.com/watch?v=CTSbxU6KLbM&list=PLnZgp6epRBbTsZEFXi_p6W48HhNyqwxIu&index=3
-library(FactoMineR)
-
-#Make rownames of WB2 equal to country names
-rownames(WB2) <- WB2[,1]
-
-#The PCA function scales variables by default, and gives a scoreplot and a 'correlation' biplot.  Notice results are flipped vertically from results above.
-
-par(cex=.8, col="blue")
-pc2 <- PCA(WB2[,-1])
-dev.off()
-summary(pc2)
-
-
-#make a screeplot - oddly, not easy in this package . . .
-#parallel analysis,etc, use princomp() or prcomp()
-
-
-
-
-##################################
-##  RUN PCA ON TRANSFORMED DATA
-##################################
-
-pc1_trans=princomp(WBtrans[,-1], cor=TRUE)
-
-#print results
-print(summary(pc1_trans),digits=2,loadings=pc1_trans$loadings,cutoff=0)
-
-#Get eigenvalues
-round(pc1_trans$sdev^2,2)
-
-#make a screeplot
-screeplot(pc1_trans,type="lines",col="red",lwd=2,pch=19,cex=1.2,main="Scree Plot of Transformed WB Data")
-
-#perform parallel analysis
-#get the function online
-source("http://www.reuningscherer.net/STAT660/R/parallel.r.txt")
-
-#make the parallel analysis plot
-parallelplot(pc1_trans)
-
-#make scoreplot with confidence ellipse :
-#  c(1,2) specifies to use components 1 and 2
-#get function from online
-source("http://reuningscherer.net/stat660/r/ciscoreplot.R.txt")
-
-#run the function
-ciscoreplot(pc1_trans,c(1,2),WBtrans[,1])
-
-#make a biplot for first two components
-biplot(pc1_trans,choices=c(1,2),pc.biplot=T)
-
-
-
-
-#############################################################
-##
-##   Environmental Attitudes Data
-##
-#############################################################
-
-
-#get data : change path to wherever you have data.
-envatt <- read.delim("http://reuningscherer.net/stat660/data/EnvAttitudes.1974.txt",header=T,sep="\t")
-
-#Keep complete cases
-envatt <- na.omit(envatt)
-
-#Notice that a matrix plot to check for linearity is useless here
-plot(envatt, pch=19, cex=.7, col='red', main="Matrix plot of Env Attitude Data")
-
-#Here is correlation plot - correlations are a bit weak!
-corrplot.mixed(cor(envatt), lower.col="black", upper = "ellipse", tl.col = "black", number.cex=.7, order = "hclust",
-               tl.pos = "lt", tl.cex=.7, main="Correlations for Transformed WB Data")
-
-
-#perform PCA
-pc3<-princomp(envatt[complete.cases(envatt),],cor=TRUE)
-
-#print results
-print(summary(pc3),digits=2,loadings=pc3$loadings,cutoff=0)
-
-#view eigenvalues (note that R gives square-root of eigenvalues)
-round(pc3$sdev^2,2)
-
-#make a scree plot with parallel analysis
-source("http://www.reuningscherer.net/STAT660/R/parallel.r.txt")
-parallelplot(pc3)
-
-
-#make scoreplot with confidence ellipse :
-#  c(1,2) specifies to use components 1 and 2
-#get function from online
-source("http://reuningscherer.net/stat660/r/ciscoreplot.R.txt")
-
-#run the function
-ciscoreplot(pc3,c(1,2),c(1:pc3$n.obs))
-
-
-#make a biplot for first two components
-
-biplot(pc3,choices=c(1,2),pc.biplot=T, cex=.7)
 ```
