@@ -177,10 +177,17 @@ ciscoreplot(pc1,c(1,2), names(data))
 ```
 *There do not appear to be very clear groupings of variables. We observe 2 outliers: the variables calm and experience.* 
 
-
 ```{r}
 biplot(pc1,choices=c(1,2),pc.biplot=T)
 ```
 
 ## PROBLEM 6
 6). Write a paragraph summarizing your findings, and your opinions about the effectiveness of using principle components on this data. Include evidence based on scatterplots of linearity in higher dimensional space, note any multivariate outliers in your score plot, comment on sample size relative to number of variables, etc.
+
+*From the biplot and scoreplot above, we see that there are not any super apparent groupings of variables that would lead to highly explanatory principal components: in the scoreplot, the dots are fairly scattered, while in the biplot, the vectors point in all directions. This makes sense given our earlier commentary after seeing the correlation plot, where only a few pairs (potentially triplets) of variables seemed to be highly correlated and many others had low to moderate correlation.* 
+
+*Part of this may be due to our sample size - note that we only have 38 (relatively few) observations for 20 (relatively many) variables, which makes it very difficult to even see the distribution of responses per variable, let alone determine very rigorous multivariate relationships. While we have outliers with 'calm' and 'experience' according to the scoreplot alone, it may be due simply to the lack of many responses.* 
+
+*Although we did select three principal components above which reflected the social, medical/individual needs, and society/regulatory-oriented attitudes toward drug usage, and they did explain approximately half the variability of the data, PCA might not be the most effective way to make sense of this data especially since each component included multiple contributors with approximately the same weight of contribution. Perhaps with more observations to the data set, or a more normally distributed set of responses, we could derive more strongly explanatory principal components from the dataset. Given the current state of the data, however, PCA was helpful in reducing the dimensions of the dataset and grouping some variables into these three categories of social, medical/individual and society/regulatory, which made people's responses to drug attitudes slightly easier to understand and provided us some insight into the factors that might affect someone's drug attitudes or different categories in which a respondent might think about drug usage which we did not have before.* 
+
+
