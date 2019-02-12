@@ -25,6 +25,7 @@ data <- data %>% drop_na()
 
 boxplot(data)
 
+data_transform <- data
 data_transformed$regret <- log(data$regret)
 data_transformed$notuse <- log(data$notuse)
 data_transformed$psycho <- sign(data$psycho)*sqrt(abs(data$psycho))
@@ -43,8 +44,6 @@ QQPlot <- function(x, na.rm = TRUE){
   }
 }
 QQPlot(data_transformed)
-
-
 ```
 
 *We first created a boxplot of our data. There is a pretty significant skew on a few of the variables, which we tried to correct through log and square root transformations. After the transformation, we re-created the boxplots. We observed that all variables were distributed more symmetrically and were closer to normal. Furthermore, after transformation, our resulting QQ-plots appeared to fall mostly along the line that would indicate a roughly normal relationship. It is important to note that while some of our QQ plots were partially piece-wise, that was mainly because we included discrete variables. Discrete variables are relevant for our analysis, so we still wanted to include them. Also, our data set is relatively small. With more data points, the QQplots would more closely follow the 45 degree line.*
@@ -78,7 +77,7 @@ CSQPlot(data_transformed,label="Drug Attitudes")
 *Our CSQ plot seems to indicate a roughly normal multivariate distribution, with all data (except for 1 variable, it appears) falling within the 95% confidence interval and a good number of variables falling along the line which indicates normality. The relative skew is, as noted above, likely partially due to the small sample size.*
 
 ## PROBLEM 2
-2). Compute the correlation matrix between all variables (SAS and SPSS will provide this for you as part of the PCA procedure – in SPSS, click on DESCRIPTIVES. In R use the cor() function or one of the other cool correlation plots.). Comment on relationships you do/do not observe. Do you think PCA will work well?
+2). Compute the correlation matrix between all variables. Comment on relationships you do/do not observe. Do you think PCA will work well?
 ```{r}
 round(cor(data_transformed), 2)
 #version 1
@@ -86,8 +85,7 @@ corrplot(cor(data_transformed), method = "color")
 #version 2
 corrplot.mixed(cor(data_transformed), lower.col="black", upper = "ellipse", tl.col = "black", number.cex=.7, order = "hclust",tl.pos = "lt", tl.cex=.7)
 ```
-*The correlation plot shows that while there is low correlation between many of  the variables, there are a few spots where variables are moderately or highly correlated. This includes, for example, "notuse" and "relationship"; "trip" and "legal"; "dope" and "notuse," as well as "fun" and "drugscene." Given the noted highly correlated variables, PCA will be helpful in reducing dimensions. It won't necessarily give us two or three highly explanatory variables, but it will reduce the repetitiveness of current variables and allow us to identify trends between them or group them intelligently.* 
-
+*The correlation plot shows that while there is low correlation between many of  the variables, there are a few spots where variables are moderately or highly correlated. This includes, for example, "notuse" and "relationship"; "trip" and "legal"; "dope" and "notuse," as well as "fun" and "drugscene." Given the noted highly correlated variables, PCA will be helpful in reducing dimensions. It won't necessarily give us two or three highly explanatory variables that sum up the entire dataset, but it will reduce the repetitiveness of current variables and allow us to group them somewhat intelligently.* 
 
 ## PROBLEM 3
 3). Perform Principle components analysis using the Correlation matrix (standardized variables). Think about how many principle components to retain. To make this decision look at
@@ -102,15 +100,12 @@ source("http://www.reuningscherer.net/STAT660/R/parallel.r.txt")
 source("http://reuningscherer.net/stat660/r/ciscoreplot.R.txt")
 data2 <- data_transformed[,c(names(data_transformed))]
 pc1 <- princomp(data2, cor=TRUE)
+
+#To see the cumulative variability accounted for by our components
 print(summary(pc1),digits=2,loadings=pc1$loadings,cutoff=0)
 round(pc1$sdev^2,2)
-```
-We look at the cumulative variability accounted by our components:
-```{r}
-summary(pc1)
-```
-We also see the screeplot and check for an "elbow" formed by our components:
-```{r}
+
+#We also want to check a screeplot in order to identify any "elbows": 
 screeplot(pc1,type="lines",col="red",lwd=2,pch=19,cex=1.2,main="Scree Plot of Raw Drug Data")
 ```
 
@@ -120,19 +115,36 @@ screeplot(pc1,type="lines",col="red",lwd=2,pch=19,cex=1.2,main="Scree Plot of Ra
 source("http://www.reuningscherer.net/STAT660/R/parallel.r.txt")
 parallelplot(pc1)
 ```
-*Following our analysis, we decided to retain 3 principal components. When we look at the summary of our PCA, we see that by including components 1,2 and 3, we are able to explain 50% of the variability, which is strong given that we are only including three components. Furthermore, following the eigenvalue rule of thumb, we see that the first three components have eigenvalues that are greater than 1 (in fact, much above 2), and the eigenvalues components beyond 3rd rapidly fall near and below 1. The scree plot shows potential "elbows" at the 2nd and 3th component. As such, including the 3rd component in our judgment seems like the best way of maximizing explanatory power while minimizing the number of components to include.*
+
+*Following our analysis, we decided to retain 3 principal components. First, when we look at the summary of our PCA, we see that by including components 1,2 and 3, we are able to explain 50% of the variability, which is strong given that we are only including three components. Furthermore, following the eigenvalue rule of thumb, we see that the first three components have eigenvalues that are greater than 1 (in fact, much above 2), and the eigenvalues components beyond 3rd rapidly fall near and below 1. The scree plot shows potential "elbows" at the 2nd and 5th component; while the 3rd component falls beyond the elbow at the 2nd component, we believe the third component's high eigenvalues and ability to explain more variability merits inclusion (as well as the makeup of its set of contributors, discussed below in problem 4.) As such, including the 3rd component in our judgment seems like the best way of maximizing explanatory power while minimizing the number of components to include.*
 
 
 ## PROBLEM 4
 4). For principle components you decide to retain, examine the loadings (principle components) and think about an interpretation for each retained component if possible.
 ```{r}
-unclass(pc1$loadings)[,1:6]
+unclass(pc1$loadings)[,1:3]
 ```
-*Note that following our interpretation of the Scree Plot with Parallel Analysis Thresholds, we decided to retain the first 3 principal components. Looking at the loadings, we note that the 'dope' is the primary contributor to the first principal component (Comp.1), followed closely by 'notuse.' This closeness between 'dope,' whicch relates to  "taking any kind of dope is a pretty dumb idea," and "even if my best friend gave me some hash, I probably wouldn't use it" because a given individual's response to those questions would likely be similar.*
+*Note that following our interpretation of the scree plot with parallel analysis thresholds, we decided to retain the first 3 principal components.*
 
-*The second principal component's (Comp.2) primary contributors are 'psycho,' 'noaspirin,' 'dangerous,' 'stoned,' and 'high.' All of the responses to these questions pertain to the safety and social admiration aspect of drug use, which explains their relative closeness in terms of weight.*
+*In the first principal component, we see that 'notuse' is the primary contributor, with 'relationship,' and 'drugscene'. The questions which produced these variables are here:* 
+    'notuse': Even if my best friend gave me some hash, I probably wouldn't use it.
+    'relationship': If people use drugs together, their relationships will be improved.
+    'drugscene': In spite of what the establishment says, the drug scene is really "where it's at".
+*It seems that all of these variables speak to the social aspect of drug usage and people's attitudes around it as a social activity. People who like the drug scene probably would likely use drugs provided by their best friend would probably also respond that it improves relationships.* 
 
-*The third principal component's (Comp.3) primary contributors are 'trip,' 'lessalcohol,' 'experience,' 'calm,' 'stupid.' The responses to these questions pertain to the prospect of positive management of drug use.*
+
+*The second principal component's (Comp.2) primary contributors include 'noaspirin,' 'legal,' 'dangerous,' and 'calm.'*
+    'noaspirin': I'd have to be pretty sick before I'd take any drug including an aspirin.
+    'legal': All drugs should be made legal and freely available.
+    'dangerous': As a general rule of thumb, most drugs are dangerous and should be used only with medical authorization.
+    'calm': I wish I could get hold of some pills to calm me down whenever I get "up tight".
+*The common thread between these variables seems to be that the questions have a semi-medical, individualized nature (with the exception of 'legal') to their inquiry that would lead to high correlations between answers (even if that correlation is highly negative). For example, someone who is very suspicious of taking aspirin would probably highly agree that most drugs are dangerous and would highly disagree that taking pills is a legitimate way to calm down. In that case, they might also extrapolate their personal experience with drug usage to others (reflected in 'legal') in the belief that they are not medically helpful. Those who who think that drugs are key to feeling better and have individual experience using them in a semi-medical way would likely also want them legal and freely available as a medical recourse for others.* 
+    
+
+*The third principal component's (Comp.3) primary contributors are 'side effects' and 'experience.'*
+    'sideeffects': Students should be told about the harmful side effects of certain drugs.
+    'experience': People who make drug legislation should really have personal experience with drugs.
+*It makes sense that these responses would be correlated and form a component since they all reflect something about the respondent's attitudes towards regulations and other people's drug usage--especially young people. Those who think students should know about hamful side effects might want legislators who are drug-free (if they see it as a moral issue), or might really want legislators with personal experience, especially if that experience is negative. Either way, it reflects a concern about drug use in society at-large.* 
 
 ## PROBLEM 5
 5) Make a score plot of the scores for at least one pair of component scores (one and two, one and three, two and three, etc). Discuss any trends/groupings you observe (probably, this will be ‘none’). As a bonus, try to make a 95% Confidence Ellipse for two of your components. You might want to also try making a bi-plot if you’re using R.
@@ -173,6 +185,3 @@ biplot(pc1,choices=c(1,2),pc.biplot=T)
 
 ## PROBLEM 6
 6). Write a paragraph summarizing your findings, and your opinions about the effectiveness of using principle components on this data. Include evidence based on scatterplots of linearity in higher dimensional space, note any multivariate outliers in your score plot, comment on sample size relative to number of variables, etc.
-```{r}
-
-```
