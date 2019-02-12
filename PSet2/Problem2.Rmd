@@ -25,7 +25,7 @@ data <- data %>% drop_na()
 
 boxplot(data)
 
-data_transform <- data
+data_transformed <- data
 data_transformed$regret <- log(data$regret)
 data_transformed$notuse <- log(data$notuse)
 data_transformed$psycho <- sign(data$psycho)*sqrt(abs(data$psycho))
