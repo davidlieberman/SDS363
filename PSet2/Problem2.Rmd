@@ -151,7 +151,7 @@ unclass(pc1$loadings)[,1:3]
 
 Define the Score Plot Function
 ```{r}
-scoreplot<-function(x,comps,namevec){
+ciscoreplot<-function(x,comps,namevec){
   y1<-sqrt(5.99*(x$sdev[comps[1]]^2))
   ymod<-y1-y1%%.05
   y1vec<-c(-y1,seq(-ymod,ymod,by=0.05),y1)
@@ -165,7 +165,7 @@ scoreplot<-function(x,comps,namevec){
     main="PC Score Plot", xlab=paste("Scores for PC",comps[1],sep=" "), ylab=paste("Scores for PC",comps[2],sep=" "),
     xlim=c(min(y1vec,x$scores[,comps[1]]),max(y1vec,x$scores[,comps[1]])))
     lines(y1vec,y2vecpos,col="Red",lwd=2)
-    lines(y1vec,y2vecneg,col="reducing",lwd=2)
+    lines(y1vec,y2vecneg,col="Red",lwd=2)
   outliers<-((x$scores[,comps[1]]^2)/(x$sdev[comps[1]]^2)+(x$scores[,comps[2]]^2)/(x$sdev[comps[2]]^2))>5.99
   points(x$scores[outliers,comps[1]],x$scores[outliers,comps[2]],pch=19,cex=1.2,col="Blue")
   text(x$scores[outliers,comps[1]],x$scores[outliers,comps[2]],col="Blue",lab=namevec[outliers], pos=4)
@@ -173,10 +173,9 @@ scoreplot<-function(x,comps,namevec){
 ```
 Let's make the scoreplot for the first two components, including a 95% confidence ellipse in the process:
 ```{r}
-scoreplot(pc1,c(1,2), names(data))
+ciscoreplot(pc1,c(1,2), names(data))
 ```
-*We observe 2 outliers: the variables calm and experience.* 
-
+*There do not appear to be very clear groupings of variables. We observe 2 outliers: the variables calm and experience.* 
 
 
 ```{r}
