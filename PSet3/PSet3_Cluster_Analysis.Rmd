@@ -13,6 +13,8 @@ library(cluster)
 library(ape)
 ```
 
+## PROBLEM 1
+
 ```{r}
 new_data <- read.csv("https://pastebin.com/raw/bNrAceXf")
 ```
@@ -21,7 +23,7 @@ new_data <- read.csv("https://pastebin.com/raw/bNrAceXf")
 colnames(new_data)
 ```
 
-#Question 2
+## PROBLEM 2
 
 Model 1
 ```{r}
@@ -81,7 +83,7 @@ clusplot(data_full, cuts, color=TRUE, shade=TRUE, labels=2, lines=0,
 ```
 
 
-#Question 3
+## PROBLEM 3
 
 ```{r}
 source("http://reuningscherer.net/stat660/R/HClusEval.R.txt")
@@ -99,7 +101,7 @@ hclus_eval(data_scaled_t, dist_m = 'euclidean', clus_m = 'ward', plot_op = T)
 ```
 
 
-#Question 4
+## PROBLEM 4
 
 ```{r}
 #kdata is just normalized input dataset
@@ -169,6 +171,5 @@ fit <- kmeans(na.omit(kdata), clust.level)
 aggregate(kdata, by=list(fit$cluster), FUN=mean)
 ```
 
-```{r}
 
-```
+## PROBLEM 5
