@@ -7,9 +7,153 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-rm(list=ls())
-
-
+library(aplpack)
+library(fpc)
+library(cluster)
+library(ape)
 ```
 
 ## PROBLEM 1
+
+```{r}
+data <- read.csv("https://gist.githubusercontent.com/davidlieberman/dcfeffdd1b047d20ca63345a7bd7104b/raw/9183d734c911c05bf1e63b7ff480cdd8d98bfd9f/fundimentals.csv")
+colnames(data)
+nrow(data)
+```
+
+
+## PROBLEM 2
+
+Model 1
+```{r}
+#Sampling Rows
+?sample
+index <- sample(1:nrow(data), 100, replace = FALSE)
+
+#Scale the data
+data_2 <- data[index, -c(1, 2, 3)]
+data_1 <- data[index, c(1, 2, 3)]
+
+data_scaled <- scale(data_2)
+
+data_full <- cbind(data_1, data_scaled)
+
+data_full <- data_full[complete.cases(data_full),]
+
+#Get distance matrix
+data_dist <- dist(data_full[,-1], method="euclidean")
+
+#Perform cluster analysis
+data_clust <- hclust(data_dist)
+
+#Make dendrogram
+data_clust$labels <- as.character(data_full[,1])
+plot(data_clust, xlab="",ylab="Distance",main="Clustering for Stocks")
+
+#identify three groups
+rect.hclust(data_clust,k=3)
+```
+
+Plain dendogram
+```{r}
+plot(data_clust,  main = "Plain dendrogram", hang = -1, cex = 1.5,
+     xlab = "", ylab = "", sub = "", axes = FALSE)
+```
+
+
+Model 2
+```{r}
+cuts <- cutree(data_clust,k=5)
+clusplot(data_full, cuts, color=TRUE, shade=TRUE, labels=2, lines=0,
+         main="World Bank Five Cluster Plot, Ward's Method, First two PC")
+```
+
+
+
+## PROBLEM 3
+
+```{r}
+source("http://reuningscherer.net/stat660/R/HClusEval.R.txt")
+data_scaled_t <- t(data_scaled)
+#get the distance matrix - canberra ignores entries where both are zero
+dist1 <- dist(data_scaled_t, method="minkowski", p=3)
+
+#now do clustering ??? use centroid method
+clust1 <- hclust(dist1, method="ward.D")
+
+plot(clust1,labels= NASA.lab[1:29], cex=.9, xlab="",ylab="Distance",main="Clustering for NASA Understory Data")
+rect.hclust(clust1,k=2)
+
+hclus_eval(data_scaled_t, dist_m = 'euclidean', clus_m = 'ward', plot_op = T)
+```
+
+
+## PROBLEM 4
+
+```{r}
+#kdata is just normalized input dataset
+kdata <- data_scaled[complete.cases(data_scaled, )]
+n.lev <- 15  #set max value for number of clusters k
+
+# Calculate the within groups sum of squared error (SSE) for the number of cluster solutions selected by the user
+wss <- rnorm(10)
+while (prod(wss==sort(wss,decreasing=T))==0) {
+  wss <- (nrow(kdata)-1)*sum(apply(kdata,2,var))
+  for (i in 2:n.lev) wss[i] <- sum(kmeans(kdata, centers=i)$withinss)}
+
+# Calculate the within groups SSE for 250 randomized data sets (based on the original input data)
+k.rand <- function(x){
+  km.rand <- matrix(sample(x),dim(x)[1],dim(x)[2])
+  rand.wss <- as.matrix(dim(x)[1]-1)*sum(apply(km.rand,2,var))
+  for (i in 2:n.lev) rand.wss[i] <- sum(kmeans(km.rand, centers=i)$withinss)
+  rand.wss <- as.matrix(rand.wss)
+  return(rand.wss)
+}
+
+rand.mat <- matrix(0,n.lev,250)
+
+k.1 <- function(x) {
+  for (i in 1:250) {
+    r.mat <- as.matrix(suppressWarnings(k.rand(kdata)))
+    rand.mat[,i] <- r.mat}
+  return(rand.mat)
+}
+
+# Same function as above for data with < 3 column variables
+k.2.rand <- function(x){
+  rand.mat <- matrix(0,n.lev,250)
+  km.rand <- matrix(sample(x),dim(x)[1],dim(x)[2])
+  rand.wss <- as.matrix(dim(x)[1]-1)*sum(apply(km.rand,2,var))
+  for (i in 2:n.lev) rand.wss[i] <- sum(kmeans(km.rand, centers=i)$withinss)
+  rand.wss <- as.matrix(rand.wss)
+  return(rand.wss)
+}
+
+k.2 <- function(x){
+  for (i in 1:250) {
+    r.1 <- k.2.rand(kdata)
+    rand.mat[,i] <- r.1}
+  return(rand.mat)
+}
+
+# Determine if the data data table has > or < 3 variables and call appropriate function above
+if (dim(kdata)[2] == 2) { rand.mat <- k.2(kdata) } else { rand.mat <- k.1(kdata) }
+
+# Plot within groups SSE against all tested cluster solutions for actual and randomized data - 1st: Log scale, 2nd: Normal scale
+
+xrange <- range(1:n.lev)
+yrange <- range(log(rand.mat),log(wss))
+plot(xrange,yrange, type='n', xlab='Cluster Solution', ylab='Log of Within Group SSE', main='Cluster Solutions against Log of SSE')
+for (i in 1:250) lines(log(rand.mat[,i]),type='l',col='red')
+lines(log(wss), type="b", col='blue')
+legend('topright',c('Actual Data', '250 Random Runs'), col=c('blue', 'red'), lty=1)
+```
+
+
+```{r}
+clust.level <- 5
+
+# Apply K-means cluster solutions - append clusters to CSV file
+fit <- kmeans(na.omit(kdata), clust.level)
+aggregate(kdata, by=list(fit$cluster), FUN=mean)
+```
