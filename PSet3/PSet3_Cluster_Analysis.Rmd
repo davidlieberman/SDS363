@@ -1,0 +1,15 @@
+---
+title: "SDS363 Problem Set 3"
+author: "Liana Wang, Yavuz Ramiz Çolak, Ryo Tamaki, David Lieberman"
+date: "2/22/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list=ls())
+
+
+```
+
+## PROBLEM 1
