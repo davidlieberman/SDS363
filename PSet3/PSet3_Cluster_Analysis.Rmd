@@ -1,6 +1,6 @@
 ---
 title: "SDS363 Problem Set 3"
-author: "Liana Wang, Yavuz Ramiz Çolak, Ryo Tamaki, David Lieberman"
+author: "Yavuz Ramiz Colak, Liana Wang, David Lieberman, Ryo Tamaki"
 date: "2/22/2019"
 output: html_document
 ---
@@ -11,51 +11,54 @@ library(aplpack)
 library(fpc)
 library(cluster)
 library(ape)
+library(tidyverse)
 ```
 
 ## PROBLEM 1
+lorem ipsum
+
+
+## PROBLEM 2
 
 ```{r}
 new_data <- read.csv("https://pastebin.com/raw/bNrAceXf")
-```
-
-```{r}
 colnames(new_data)
 ```
-
-## PROBLEM 2
 
 Model 1
 ```{r}
 #Selecting Relevant Columns
-
-index1 <- c(1, 2, 3)
-index2 <- c(6, 10, 17, 19, 20, 21, 22, 27, 23, 24)
+index3 <- c(5, 9, 19, 20, 21, 26)
 
 #Selecting Rows
-
 rowindex <- seq(1, 89, by = 2)
 
+data_1 <- new_data[rowindex,]
+data_1 <- data_1 %>% remove_rownames %>% column_to_rownames(var="Ticker.Symbol")
+
 #Scale the data
-data_1 <- new_data[rowindex,index1]
-data_2 <- new_data[rowindex,index2]
+data_2 <- data_1[,index3]
 
-data_scaled <- scale(data_2)
+data_f <- scale(data_2)
+```
+CONTINUOUS VARIABLES SO I WILL USE EUCLIDIAN DISTANCE
 
-data_full <- cbind(data_1, data_scaled)
+#Question 2
 
+##Model 1
+Euclidean Distance + Complete
+```{r}
 #Get distance matrix
-data_dist <- dist(data_full[,-1], method="euclidean")
+data_dist <- dist(data_f[,-1], method="euclidean")
 
 #Perform cluster analysis
-data_clust <- hclust(data_dist)
+data_clust <- hclust(data_dist, method = "complete")
 
 #Make dendrogram
-data_clust$labels <- as.character(data_full[,1])
 plot(data_clust, xlab="",ylab="Distance",main="Clustering for Stocks")
 
 #identify three groups
-rect.hclust(data_clust,k=3)
+rect.hclust(data_clust,k=5)
 ```
 
 Plain dendogram
@@ -64,30 +67,82 @@ plot(data_clust,  main = "Plain dendrogram", hang = -1, cex = 1.5,
      xlab = "", ylab = "", sub = "", axes = FALSE)
 ```
 
+##Model 2
 
-Model 2
 ```{r}
-plot(as.phylo(data_clust), type = "unrooted", main = "Unrooted tree")
+#Get distance matrix
+data_dist_2 <- dist(data_f[,-1], method = "euclidean")
+
+#Perform cluster analysis
+data_clust_2 <- hclust(data_dist_2, method = "single")
+
+#Make dendrogram
+plot(data_clust_2, xlab="",ylab="Distance",main="Clustering for Stocks")
+
+#identify three groups
+rect.hclust(data_clust_2, k=5)
 ```
 
-Model 3
+Plain dendogram for Model 2
 ```{r}
-plot(as.phylo(data_clust), type = "fan", main = "Leaves spread in a circle")
+plot(data_clust_2,  main = "Plain dendrogram", hang = -1, cex = 1.5,
+     xlab = "", ylab = "", sub = "", axes = FALSE)
 ```
 
-Model 4 - Not Working???
+##Model 3
+
+Manhattan + Complete
 ```{r}
-cuts <- cutree(data_clust,k=5)
-clusplot(data_full, cuts, color=TRUE, shade=TRUE, labels=2, lines=0,
-         main="World Bank Five Cluster Plot, Ward's Method, First two PC")
+#Get distance matrix
+data_dist_3 <- dist(data_f[,-1], method = "manhattan")
+
+#Perform cluster analysis
+data_clust_3 <- hclust(data_dist_3, method = "complete")
+
+#Make dendrogram
+plot(data_clust_3, xlab="",ylab="Distance",main="Clustering for Stocks")
+
+#identify three groups
+rect.hclust(data_clust_3,k=5)
 ```
+
+Plain dendogram for Model 3
+```{r}
+plot(data_clust_3,  main = "Plain dendrogram", hang = -1, cex = 1.5,
+     xlab = "", ylab = "", sub = "", axes = FALSE)
+```
+
+##Model 4
+
+Manhattan + Single
+```{r}
+#Get distance matrix
+data_dist_4 <- dist(data_f[,-1], method = "manhattan")
+
+#Perform cluster analysis
+data_clust_4 <- hclust(data_dist_4, method = "single")
+
+#Make dendrogram
+plot(data_clust_4, xlab="",ylab="Distance",main="Clustering for Stocks")
+
+#identify three groups
+rect.hclust(data_clust_4, k=5)
+```
+
+Plain dendogram for Model 4
+```{r}
+plot(data_clust_4,  main = "Plain dendrogram", hang = -1, cex = 1.5,
+     xlab = "", ylab = "", sub = "", axes = FALSE)
+```
+
 
 
 ## PROBLEM 3
 
 ```{r}
 source("http://reuningscherer.net/stat660/R/HClusEval.R.txt")
-data_scaled_t <- t(data_scaled)
+
+data_scaled_t <- t(data_f)
 #get the distance matrix - canberra ignores entries where both are zero
 dist1 <- dist(data_scaled_t, method="minkowski", p=3)
 
@@ -96,7 +151,9 @@ clust1 <- hclust(dist1, method="ward.D")
 
 plot(clust1, cex=.9, xlab="",ylab="Distance",main="Clustering for NYSE Data")
 rect.hclust(clust1,k=2)
+```
 
+```{r}
 hclus_eval(data_scaled_t, dist_m = 'euclidean', clus_m = 'ward', plot_op = T)
 ```
 
@@ -105,10 +162,13 @@ hclus_eval(data_scaled_t, dist_m = 'euclidean', clus_m = 'ward', plot_op = T)
 
 ```{r}
 #kdata is just normalized input dataset
-kdata <- data_scaled
-n.lev <- 15  #set max value for number of clusters k
+kdata <- data_f
+
+#set max value for number of clusters k
+n.lev <- 15
 
 # Calculate the within groups sum of squared error (SSE) for the number of cluster solutions selected by the user
+
 wss <- rnorm(10)
 while (prod(wss==sort(wss,decreasing=T))==0) {
   wss <- (nrow(kdata)-1)*sum(apply(kdata,2,var))
@@ -163,13 +223,32 @@ legend('topright',c('Actual Data', '250 Random Runs'), col=c('blue', 'red'), lty
 ```
 
 
+#HOW MANY LEVELS DO YOU WANT? DECIDE QULITATIVELY IN THE PREVIOUS PARTS!!!
+
 ```{r}
-clust.level <- 5
+clust.level <- 7
 
 # Apply K-means cluster solutions - append clusters to CSV file
 fit <- kmeans(na.omit(kdata), clust.level)
 aggregate(kdata, by=list(fit$cluster), FUN=mean)
 ```
 
+```{r}
+clust.out <- fit$cluster
+kclust <- as.matrix(clust.out)
+kclust.out <- cbind(kclust, data_f)
+write.table(kclust.out, file="kmeans_out.csv", sep=",")
+
+# Display Principal Components plot of data with clusters identified
+
+clusplot(kdata, fit$cluster, shade=F, labels=2, lines=0, color=T, lty=4, main='Principal Components plot showing K-means clusters')
+```
+
+
+```{r}
+plotcluster(kdata, fit$cluster, main="Five Cluster Solution in DA Space",
+            xlab="First Discriminant Function", ylab="Second Discriminant Function")
+```
 
 ## PROBLEM 5
+Lorem ipsum
