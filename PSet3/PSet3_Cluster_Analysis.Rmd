@@ -15,7 +15,7 @@ library(tidyverse)
 ```
 
 ## PROBLEM 1
-lorem ipsum
+Lorem ipsum
 
 
 ## PROBLEM 2
@@ -251,4 +251,4 @@ plotcluster(kdata, fit$cluster, main="Five Cluster Solution in DA Space",
 ```
 
 ## PROBLEM 5
-lorem ipsum
+Lorem ipsum
