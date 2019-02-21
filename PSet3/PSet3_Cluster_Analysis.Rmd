@@ -13,32 +13,34 @@ library(cluster)
 library(ape)
 ```
 
-## PROBLEM 1
-
 ```{r}
-data <- read.csv("https://pastebin.com/raw/bNrAceXf")
-colnames(data)
-nrow(data)
+new_data <- read.csv("https://pastebin.com/raw/bNrAceXf")
 ```
 
+```{r}
+colnames(new_data)
+```
 
-## PROBLEM 2
+#Question 2
 
 Model 1
 ```{r}
-#Sampling Rows
-?sample
-index <- sample(1:nrow(data), 100, replace = FALSE)
+#Selecting Relevant Columns
+
+index1 <- c(1, 2, 3)
+index2 <- c(6, 10, 17, 19, 20, 21, 22, 27, 23, 24)
+
+#Selecting Rows
+
+rowindex <- seq(1, 89, by = 2)
 
 #Scale the data
-data_2 <- data[index, -c(1, 2, 3)]
-data_1 <- data[index, c(1, 2, 3)]
+data_1 <- new_data[rowindex,index1]
+data_2 <- new_data[rowindex,index2]
 
 data_scaled <- scale(data_2)
 
 data_full <- cbind(data_1, data_scaled)
-
-data_full <- data_full[complete.cases(data_full),]
 
 #Get distance matrix
 data_dist <- dist(data_full[,-1], method="euclidean")
@@ -63,14 +65,23 @@ plot(data_clust,  main = "Plain dendrogram", hang = -1, cex = 1.5,
 
 Model 2
 ```{r}
+plot(as.phylo(data_clust), type = "unrooted", main = "Unrooted tree")
+```
+
+Model 3
+```{r}
+plot(as.phylo(data_clust), type = "fan", main = "Leaves spread in a circle")
+```
+
+Model 4 - Not Working???
+```{r}
 cuts <- cutree(data_clust,k=5)
 clusplot(data_full, cuts, color=TRUE, shade=TRUE, labels=2, lines=0,
          main="World Bank Five Cluster Plot, Ward's Method, First two PC")
 ```
 
 
-
-## PROBLEM 3
+#Question 3
 
 ```{r}
 source("http://reuningscherer.net/stat660/R/HClusEval.R.txt")
@@ -81,18 +92,18 @@ dist1 <- dist(data_scaled_t, method="minkowski", p=3)
 #now do clustering ??? use centroid method
 clust1 <- hclust(dist1, method="ward.D")
 
-plot(clust1,labels= NASA.lab[1:29], cex=.9, xlab="",ylab="Distance",main="Clustering for NASA Understory Data")
+plot(clust1, cex=.9, xlab="",ylab="Distance",main="Clustering for NYSE Data")
 rect.hclust(clust1,k=2)
 
 hclus_eval(data_scaled_t, dist_m = 'euclidean', clus_m = 'ward', plot_op = T)
 ```
 
 
-## PROBLEM 4
+#Question 4
 
 ```{r}
 #kdata is just normalized input dataset
-kdata <- data_scaled[complete.cases(data_scaled, )]
+kdata <- data_scaled
 n.lev <- 15  #set max value for number of clusters k
 
 # Calculate the within groups sum of squared error (SSE) for the number of cluster solutions selected by the user
@@ -156,4 +167,8 @@ clust.level <- 5
 # Apply K-means cluster solutions - append clusters to CSV file
 fit <- kmeans(na.omit(kdata), clust.level)
 aggregate(kdata, by=list(fit$cluster), FUN=mean)
+```
+
+```{r}
+
 ```
