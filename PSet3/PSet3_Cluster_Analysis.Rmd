@@ -251,4 +251,4 @@ plotcluster(kdata, fit$cluster, main="Five Cluster Solution in DA Space",
 ```
 
 ## PROBLEM 5
-Lorem ipsum
+lorem ipsum
