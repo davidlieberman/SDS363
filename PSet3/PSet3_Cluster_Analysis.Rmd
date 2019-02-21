@@ -16,7 +16,7 @@ library(ape)
 ## PROBLEM 1
 
 ```{r}
-data <- read.csv("https://gist.githubusercontent.com/davidlieberman/dcfeffdd1b047d20ca63345a7bd7104b/raw/9183d734c911c05bf1e63b7ff480cdd8d98bfd9f/fundimentals.csv")
+data <- read.csv("https://pastebin.com/raw/bNrAceXf")
 colnames(data)
 nrow(data)
 ```
