@@ -1,6 +1,6 @@
 ---
-title: "PSet 4"
-author: "Liana Wang"
+title: "PSet 3"
+author: "Ramiz Çolak, Ryo Tamaki, David Lieberman, Liana Wang"
 date: "2/21/2019"
 output: html_document
 ---
@@ -16,44 +16,64 @@ library(tidyverse)
 ## PROBLEM 1
 1.	Think about what metrics are appropriate for your data based on data type. Write a few sentences about this.  Also think about whether you should standardize or transform your data (comment as appropriate).
 
+```{r}
+#Reading the Data
+new_data <- read.csv("https://pastebin.com/raw/bNrAceXf")
+```
+
+```{r}
+#Selecting Relevant Columns
+colnames(new_data)
+index3 <- c(5, 9, 19, 20, 21, 26)
+
+#Selecting 45 Rows
+rowindex <- seq(1, 89, by = 2)
+
+data_1 <- new_data[rowindex,]
+
+#Changing the Row Names to Tickers of the Company
+data_1 <- data_1 %>% remove_rownames %>% column_to_rownames(var="Ticker.Symbol")
+
+#Subsetting by 6 Columns
+data_2 <- data_1[,index3]
+
+#Scaling the data
+data_f <- scale(data_2)
+```
+
+We selected following 6 columns: Cash Ratio, Gross Margin, Operating Margin, Profit Margin, Quick Ratio, and Earnings Per Share. The reason we selected these 6 columns is that they are "ratio" measures, that is, they are comparable metrics for each of the listed companies. All companies have margins and ratio that fall on a similar range, and this makes them groupable. Since we would love to be able to group closer data points, we want to use comparable units, and these columns fulfill this requirement.
+
+After we selected our columns, we saw that our columns only include continuous variables. Therefore, overall, we preferred using Euclidean distance. That being said, to try different distance measures, in question 2, we also included Manhattan distance--which is also suitable for continuous variables.
+
+In terms of agglomeration methods, our data set is more suitable for complete linkage or average linkage. Because companies may have very different underlying fundamentals, it is possible to have outliers. Hence, we prefer agglomeration methods that are less sensitive to outliers.
 
 ## PROBLEM 2
 2.	Try various forms of hierarchical cluster analysis.  Try at least two different metrics and two agglomeration methods.  Produce dendrograms and comment on what you observe.
-```{r}
-new_data <- read.csv("https://pastebin.com/raw/bNrAceXf")
-colnames(new_data)
-```
 
-##Model 1
-```{r}
-#Selecting Relevant Columns
-index3 <- c(5, 9, 19, 20, 21, 26)
-#Selecting Rows
-rowindex <- seq(1, 89, by = 2)
-data_1 <- new_data[rowindex,]
-data_1 <- data_1 %>% remove_rownames %>% column_to_rownames(var="Ticker.Symbol")
-#Scale the data
-data_2 <- data_1[,index3]
-data_f <- scale(data_2)
-```
-CONTINUOUS VARIABLES SO I WILL USE EUCLIDEAN DISTANCE
+***How do we choose the optimal number of clusters for hierarchical***???
+
+**Note that our data is mostly continuous. We are going to try two distance metrics and three agglomeration methods. Distance methods we used are Euclidean and Manhattan, and agglomeration methods we used are complete, single and average. This gives us six different cases.**
 
 ##Model 1
 Euclidean Distance + Complete
 ```{r}
 #Get distance matrix
 data_dist <- dist(data_f[,-1], method="euclidean")
+
 #Perform cluster analysis
 data_clust <- hclust(data_dist, method = "complete")
+
 #Make dendrogram
-plot(data_clust, xlab="",ylab="Distance",main="Clustering for Stocks")
-#identify three groups
-rect.hclust(data_clust,k=5)
+plot(data_clust, xlab="",ylab="Distance", cex = .5, main="Clustering for Stocks")
+
+#identify five groups
+rect.hclust(data_clust,k=7)
 ```
+**In the dendogram above, we decided to ask R**
 
 Plain dendogram
 ```{r}
-plot(data_clust,  main = "Plain dendrogram", hang = -1, cex = 1.5,
+plot(data_clust,  main = "Plain dendrogram", hang = -1, cex = .5,
      xlab = "", ylab = "", sub = "", axes = FALSE)
 ```
 
@@ -62,17 +82,20 @@ plot(data_clust,  main = "Plain dendrogram", hang = -1, cex = 1.5,
 ```{r}
 #Get distance matrix
 data_dist_2 <- dist(data_f[,-1], method = "euclidean")
+
 #Perform cluster analysis
 data_clust_2 <- hclust(data_dist_2, method = "single")
+
 #Make dendrogram
 plot(data_clust_2, xlab="",ylab="Distance",main="Clustering for Stocks")
+
 #identify three groups
 rect.hclust(data_clust_2, k=5)
 ```
 
 Plain dendogram for Model 2
 ```{r}
-plot(data_clust_2,  main = "Plain dendrogram", hang = -1, cex = 1.5,
+plot(data_clust_2,  main = "Plain dendrogram", hang = -1, cex = .5,
      xlab = "", ylab = "", sub = "", axes = FALSE)
 ```
 
@@ -82,17 +105,20 @@ Manhattan + Complete
 ```{r}
 #Get distance matrix
 data_dist_3 <- dist(data_f[,-1], method = "manhattan")
+
 #Perform cluster analysis
 data_clust_3 <- hclust(data_dist_3, method = "complete")
+
 #Make dendrogram
 plot(data_clust_3, xlab="",ylab="Distance",main="Clustering for Stocks")
+
 #identify three groups
 rect.hclust(data_clust_3,k=5)
 ```
 
 Plain dendogram for Model 3
 ```{r}
-plot(data_clust_3,  main = "Plain dendrogram", hang = -1, cex = 1.5,
+plot(data_clust_3,  main = "Plain dendrogram", hang = -1, cex = .5,
      xlab = "", ylab = "", sub = "", axes = FALSE)
 ```
 
@@ -102,17 +128,69 @@ Manhattan + Single
 ```{r}
 #Get distance matrix
 data_dist_4 <- dist(data_f[,-1], method = "manhattan")
+
 #Perform cluster analysis
 data_clust_4 <- hclust(data_dist_4, method = "single")
+
 #Make dendrogram
 plot(data_clust_4, xlab="",ylab="Distance",main="Clustering for Stocks")
+
 #identify three groups
 rect.hclust(data_clust_4, k=5)
 ```
 
 Plain dendogram for Model 4
 ```{r}
-plot(data_clust_4,  main = "Plain dendrogram", hang = -1, cex = 1.5,
+plot(data_clust_4,  main = "Plain dendrogram", hang = -1, cex = .5,
+     xlab = "", ylab = "", sub = "", axes = FALSE)
+```
+
+##Model 5
+
+Euclidean + Average
+
+```{r}
+#Get distance matrix
+data_dist_5 <- dist(data_f[,-1], method = "euclidean")
+
+#Perform cluster analysis
+data_clust_5 <- hclust(data_dist_5, method = "average")
+
+#Make dendrogram
+plot(data_clust_5, xlab="",ylab="Distance",main="Clustering for Stocks")
+
+#identify three groups
+rect.hclust(data_clust_5, k=5)
+```
+
+Plain dendogram for Model 5
+```{r}
+plot(data_clust_5,  main = "Plain dendrogram", hang = -1, cex = .5,
+     xlab = "", ylab = "", sub = "", axes = FALSE)
+```
+
+
+##Model 6
+
+Manhattan + Average
+
+```{r}
+#Get distance matrix
+data_dist_6 <- dist(data_f[,-1], method = "euclidean")
+
+#Perform cluster analysis
+data_clust_6 <- hclust(data_dist_6, method = "average")
+
+#Make dendrogram
+plot(data_clust_6, xlab="",ylab="Distance", main="Clustering for Stocks")
+
+#identify three groups
+rect.hclust(data_clust_6, k=5)
+```
+
+Plain dendogram for Model 6
+```{r}
+plot(data_clust_6,  main = "Plain dendrogram", hang = -1, cex = .5,
      xlab = "", ylab = "", sub = "", axes = FALSE)
 ```
 
@@ -123,18 +201,23 @@ plot(data_clust_4,  main = "Plain dendrogram", hang = -1, cex = 1.5,
 
 ```{r}
 source("http://reuningscherer.net/stat660/R/HClusEval.R.txt")
+
 data_scaled_t <- t(data_f)
 #get the distance matrix - canberra ignores entries where both are zero
-dist1 <- dist(data_scaled_t, method="minkowski", p=3)
+# We utilise the Euclidian distance method to compute distances and intiate clustering. Although we are cognisant of the succeptibility of Euclidean distance to outliers, we note that our data does not appear to have significant outliers, after plotting boxplots of our variables.
+
+dist1 <- dist(data_scaled_t, method="euclidean")
+
 #now do clustering ??? use centroid method
 clust1 <- hclust(dist1, method="ward.D")
+
+# We draw the dendogram of our data and note that we have two rectangles, delineating the two clusters identified in our data.
 plot(clust1, cex=.9, xlab="",ylab="Distance",main="Clustering for NYSE Data")
 rect.hclust(clust1,k=2)
 ```
 
-```{r}
+# We evaluate the number of groups that we wish to retain by calculating the 'guidance statistics,' namely: R-Squared, Root-mean-square standard deviation, semi-partial R-squared, and cluster distance. In computing these statistics and producing the plot, we find that
 hclus_eval(data_scaled_t, dist_m = 'euclidean', clus_m = 'ward', plot_op = T)
-```
 
 
 ## PROBLEM 4
@@ -218,3 +301,4 @@ plotcluster(kdata, fit$cluster, main="Five Cluster Solution in DA Space",
 
 ## PROBLEM 5
 5.	Comment on the number of groups that seem to be present based on what you find above.
+
