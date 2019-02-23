@@ -13,7 +13,7 @@ library(cluster)
 library(ape)
 library(tidyverse)
 ```
- 
+
 ## Introduction to Our Data set
 
 **We're using a dataset on the New York Stock Exchange, which we obtained from Kaggle. There are 79 columns of variables measuring various aspects of stock performance of the S&P 500, with data from the past few years. In every row, we have a company, and each row name is set to the company's stock identifying ticker. Column names include various characteristics about the company ranging from Earnings and Total Costs, to Profit Marging and Price/Earnings ratio. For our cluster analysis, we formed a subset of this data set. For this, we selected 6 columns easily comparable across companies: Cash Ratio, Gross Margin, Operating Margin, Profit Margin, Quick Ratio, and Earnings Per Share.**
@@ -79,7 +79,7 @@ plot(data_clust, xlab="",ylab="Distance", cex = .5, main="Clustering for Stocks"
 #rect.hclust(data_clust, k=5)
 rect.hclust(data_clust,k=7)
 ```
-**In this first model distance was calculated using the Euclidean method and a complete agglomeration method. The last command asks R to identify 7 clusters, since our data contains roughly 7 industries, and we think that might influence variables like risk and profit margin. From the dendogram, though, we can see three relatively larger clusters and four small single-stock clusters (CF, CMG, BIIB, APA). The left-most large cluster on the tree **
+**In this first model distance was calculated using the Euclidean method and a complete agglomeration method. The last command asks R to identify 7 clusters, since our data contains roughly 7 industries, and we think that might influence variables like risk and profit margin. From the dendogram, though, we can see three relatively larger clusters and four small single-stock clusters (CF, CMG, BIIB, APA). The left-most large cluster on the tree contains a variety of stocks, including those from companies in communications and manufacturing. The second cluster is smaller, but more specific to medical and other technology. The last cluster has a large number of stocks related to utilities and household products.**
 
 Plain dendogram
 ```{r}
@@ -100,16 +100,10 @@ data_clust_2 <- hclust(data_dist_2, method = "single")
 plot(data_clust_2, xlab="",ylab="Distance",main="Clustering for Stocks")
 
 # Identify groups
-#rect.hclust(data_clust_2, k=5)
 rect.hclust(data_clust_2, k=7)
 ```
 
-Plain dendogram for Model 2
-```{r}
-plot(data_clust_2,  main = "Plain dendrogram", hang = -1, cex = .5,
-     xlab = "", ylab = "", sub = "", axes = FALSE)
-```
-**Model 2 used a "single" agglomeration method, which ought to produce more distinct groups. In this case, however, we obtained one large cluster that includes most of the stocks, and a few scattered ones toward the left-hand side of the dendogram. This does not appear to be particularly useful for cluster analysis, since there is so much intra-group variation in our very large cluster.**
+**Model 2 used a "single" agglomeration method, which ought to produce more distinct groups. In this case, however, we obtained one large cluster that includes most of the stocks, and a few scattered ones toward the left-hand side of the dendogram. After seeing the results of single agglomeration, it does not appear to be particularly useful for cluster analysis, so we decided to proceed without using this agglomeration method again.**
 
 #### Model 3
 
@@ -125,38 +119,9 @@ data_clust_3 <- hclust(data_dist_3, method = "complete")
 plot(data_clust_3, xlab="",ylab="Distance",main="Clustering for Stocks", cex = .5)
 
 # Identify groups
-rect.hclust(data_clust_3,k=5)
+rect.hclust(data_clust_3,k=7)
 ```
-**Since Manhattan distance calculation could work well for high-dimensional datasets, and also places less weight upon outliers, we also decided to try a model using this distancing method and "complete" agglomeration.**
-
-Plain dendogram for Model 3
-```{r}
-plot(data_clust_3,  main = "Plain dendrogram", hang = -1, cex = .5,
-     xlab = "", ylab = "", sub = "", axes = FALSE)
-```
-
-#### Model 4
-
-Manhattan + Single
-```{r}
-# Get distance matrix
-data_dist_4 <- dist(data_f[,-1], method = "manhattan")
-
-# Perform cluster analysis
-data_clust_4 <- hclust(data_dist_4, method = "single")
-
-# Make dendrogram
-plot(data_clust_4, xlab="",ylab="Distance",main="Clustering for Stocks", cex = .5)
-
-# Identify three groups
-rect.hclust(data_clust_4, k=5)
-```
-
-Plain dendogram for Model 4
-```{r}
-plot(data_clust_4,  main = "Plain dendrogram", hang = -1, cex = .5,
-     xlab = "", ylab = "", sub = "", axes = FALSE)
-```
+**Since Manhattan distance calculation could work well for high-dimensional datasets, and also places less weight upon outliers, we also decided to see whether a different distance calculation would produce different clusters from the Euclidean distance method.**
 
 #### Model 5
 
@@ -207,18 +172,16 @@ plot(data_clust_6,  main = "Plain dendrogram", hang = -1, cex = .5,
 ```{r}
 source("http://reuningscherer.net/stat660/R/HClusEval.R.txt")
 
-data_scaled_t <- t(data_f)
-# Get the distance matrix - canberra ignores entries where both are zero
-# We utilise the Euclidian distance method to compute distances and intiate clustering. Although we are cognisant of the succeptibility of Euclidean distance to outliers, we note that our data does not appear to have significant outliers, after plotting boxplots of our variables.
+# We utilise the Euclidian distance method to compute distances and intiate clustering. Although we are cognisant of the succeptibility of Euclidean distance to outliers, we note that our data does not appear to have significant outliers, as revealed after plotting boxplots of our variables.
 
-dist1 <- dist(data_scaled_t, method="euclidean")
+dist1 <- dist(data_f, method="euclidean")
 
-# Now do clustering ??? use centroid method
+# We run the hclust() command to create the Hierarchical Ward Cluster (using Euclidean distance). We utilise Ward's method as "Several studies of clustering suggest that Ward’s method or Average Linkage work the ‘best’" (pg. 324, Cluster Analysis Lecture)
 clust1 <- hclust(dist1, method="ward.D")
 
-# We draw the dendogram of our data and note that we have two rectangles, delineating the two clusters identified in our data.
+# We draw the dendogram of our data. We opt for 5 clusters to begin with as we hypothesise that the stocks could potentially be divided along industry lines and upon cursory glance, there are about 5 categories. (NB: We later find that there are more than 5 categories, 7 to be precise, but this was made after conducting the data anlaysis from question 4 onwards and by looking at the companies in greater detail.) We therefore opt for 5 clusters and delineate them with the red lines as such.
 plot(clust1, cex=.9, xlab="",ylab="Distance",main="Clustering for NYSE Data")
-rect.hclust(clust1,k=2)
+rect.hclust(clust1,k=5)
 
 # We evaluate the number of groups that we wish to retain by calculating the 'guidance statistics,' namely: R-Squared, Root-mean-square standard deviation, semi-partial R-squared, and cluster distance. In computing these statistics and producing the plot, we find that
 hclus_eval(data_scaled_t, dist_m = 'euclidean', clus_m = 'ward', plot_op = T)
