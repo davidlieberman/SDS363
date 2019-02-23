@@ -81,12 +81,6 @@ rect.hclust(data_clust,k=7)
 ```
 **In this first model distance was calculated using the Euclidean method and a complete agglomeration method. The last command asks R to identify 7 clusters, since our data contains roughly 7 industries, and we think that might influence variables like risk and profit margin. From the dendogram, though, we can see three relatively larger clusters and four small single-stock clusters (CF, CMG, BIIB, APA). The left-most large cluster on the tree contains a variety of stocks, including those from companies in communications and manufacturing. The second cluster is smaller, but more specific to medical and other technology. The last cluster has a large number of stocks related to utilities and household products.**
 
-Plain dendogram
-```{r}
-plot(data_clust,  main = "Plain dendrogram", hang = -1, cex = .5,
-     xlab = "", ylab = "", sub = "", axes = FALSE)
-```
-
 #### Model 2
 
 ```{r}
@@ -121,30 +115,9 @@ plot(data_clust_3, xlab="",ylab="Distance",main="Clustering for Stocks", cex = .
 # Identify groups
 rect.hclust(data_clust_3,k=7)
 ```
-**Since Manhattan distance calculation could work well for high-dimensional datasets, and also places less weight upon outliers, we also decided to see whether a different distance calculation would produce different clusters from the Euclidean distance method.**
+**Since Manhattan distance calculation could work well for high-dimensional datasets, and also places less weight upon outliers, we also decided to see whether a different distance calculation would produce different clusters from the Euclidean distance method. In fact, this method obtains four groups with more stocks in them. While these groups do not directly correspond with different industries, the right-most cluster is composed of large pharmaceutical stocks, while another cluster is composed of mainly tech, media, and communications related stocks. The mix of stocks that do not align with industry might have something to do with market share or company size--we can see that several large companies, like Amazon, CenterPoint Energy and Boeing are all located in one cluster.**
 
-#### Model 5
-
-Euclidean + Average
-
-```{r}
-# Get distance matrix
-data_dist_5 <- dist(data_f[,-1], method = "euclidean")
-# Perform cluster analysis
-data_clust_5 <- hclust(data_dist_5, method = "average")
-# Make dendrogram
-plot(data_clust_5, xlab="",ylab="Distance",main="Clustering for Stocks")
-# Identify three groups
-rect.hclust(data_clust_5, k=5)
-```
-
-Plain dendogram for Model 5
-```{r}
-plot(data_clust_5,  main = "Plain dendrogram", hang = -1, cex = .5,
-     xlab = "", ylab = "", sub = "", axes = FALSE)
-```
-
-#### Model 6
+### Model 4
 
 Manhattan + Average
 
@@ -156,41 +129,44 @@ data_clust_6 <- hclust(data_dist_6, method = "average")
 # Make dendrogram
 plot(data_clust_6, xlab="",ylab="Distance", main="Clustering for Stocks")
 # Identify three groups
-rect.hclust(data_clust_6, k=5)
+rect.hclust(data_clust_6, k=7)
 ```
 
-Plain dendogram for Model 6
-```{r}
-plot(data_clust_6,  main = "Plain dendrogram", hang = -1, cex = .5,
-     xlab = "", ylab = "", sub = "", axes = FALSE)
-```
 
 
 ## PROBLEM 3
 3.	If possible, run the SAS macro  or the R function to think about how many groups you want to retain (i.e. get the plots of cluster distance, R-squared, etc).  If you can’t run this, discuss how many groups you think are present.
 
-```{r}
-# We utilise the Euclidian distance method to compute distances and intiate clustering. Although we are cognisant of the succeptibility of Euclidean distance to outliers, we note that our data does not appear to have significant outliers, as revealed after plotting boxplots of our variables.
+**We utilise the Euclidian distance method to compute distances and intiate clustering. Although we are cognisant of the succeptibility of Euclidean distance to outliers, we note that our data does not appear to have significant outliers, as revealed after plotting boxplots of our variables. We utilise Ward's method for hierarchical clustering as "Several studies of clustering suggest that Ward’s method or Average Linkage work the ‘best’" (pg. 324, Cluster Analysis Lecture). We opt for 7 clusters to begin when we plot the dendogram as we hypothesise that the stocks could potentially be divided along industry lines as mentioned prevoiusly. Our observations of the stocks suggest that there are 7 relevant industries.**
 
+```{r}
+# Using the Euclidean distance method to compute distances to begin the clustering process
 dist1 <- dist(data_f, method="euclidean")
 
-# We run the hclust() command to create the Hierarchical Ward Cluster (using Euclidean distance). We utilise Ward's method as "Several studies of clustering suggest that Ward’s method or Average Linkage work the ‘best’" (pg. 324, Cluster Analysis Lecture)
+#We run the hclust() command to create the Hierarchical Ward Cluster (using Euclidean distance).
 clust1 <- hclust(dist1, method="ward.D")
 
-# We draw the dendogram of our data. We opt for 5 clusters to begin with as we hypothesise that the stocks could potentially be divided along industry lines and upon cursory glance, there are about 5 categories. (NB: We later find that there are more than 5 categories, 7 to be precise, but this was made after conducting the data anlaysis from below and by looking at the companies in greater detail.) We therefore opt for 5 clusters and delineate them with the red lines as such.
+# We plot the dendogram of our data with 7 clusters.
 plot(clust1, cex=.9, xlab="",ylab="Distance",main="Clustering for NYSE Data")
 rect.hclust(clust1,k=7)
 ```
+**To build on our hypothesis of retaining 7 groups across industry lines, we evaluate the number of groups that we wish to retain by calculating the 'guidance statistics,' namely: R-Squared, Root-mean-square standard deviation, semi-partial R-squared, and cluster distance. Again, we utilise Euclidean distance and the Ward method. In computing these statistics and producing the plot, we find that retaining 7 groups seems apt. Starting with the RSQ, we see that there is an elbow (gradient change) right around the 7 mark; in RMSSTD, we observe a local minimum by 7 mark as well. We see marginal improvements at the 7 group mark on the SPRSQ plot.**
 
 ```{r}
-# We evaluate the number of groups that we wish to retain by calculating the 'guidance statistics,' namely: R-Squared, Root-mean-square standard deviation, semi-partial R-squared, and cluster distance. In computing these statistics and producing the plot, we find that
+# Loading the hclus_eval code
 source("http://reuningscherer.net/stat660/R/HClusEval.R.txt")
 
+# Running hclus_eval to produce the aforementioned guidance statistics; we use the Euclidean method for distances and the Ward method for clustering once again.
 hclus_eval(data_f, dist_m = 'euclidean', clus_m = 'ward', plot_op = T)
 ```
 
 ## PROBLEM 4
 4.	Run k-means clustering on your data.  Compare results to what you got in 3.)  Include a sum of squares vs. k (number of clusters) plot and comment on how many groups exist.
+
+```{r}
+set.seed(10)
+```
+
 
 ```{r}
 # kdata is just normalized input dataset
@@ -265,15 +241,49 @@ lines(log(r.sse.min), type='l', col='red')
 legend('topright',c('SSE - random SSE', 'SD of SSE-random SSE'), col=c('blue', 'red'), lty=1)
 ```
 
-Deciding on number of levels to keep
+We calculate internal sum of squares distances through 250 random partitions into an equivalent number of clusters with the same sample sizes as we actually created with our actual k-means partition.
+
+We look at the distance between our internal sum of squares blue line and red line, and ask at what point does the difference stops decreasing (improving). That point becomes our cluster number, and in this particular case, it is 6 clusters.
+
 
 ```{r}
-clust.level <- 7
+# Calculate the mean and standard deviation of difference between SSE of actual data and SSE of 250 randomized datasets
+r.sse <- matrix(0,dim(rand.mat)[1],dim(rand.mat)[2])
+wss.1 <- as.matrix(wss)
+for (i in 1:dim(r.sse)[2]) {
+  r.temp <- abs(rand.mat[,i]-wss.1[,1])
+  r.sse[,i] <- r.temp}
+r.sse.m <- apply(r.sse,1,mean)
+r.sse.sd <- apply(r.sse,1,sd)
+r.sse.plus <- r.sse.m + r.sse.sd
+r.sse.min <- r.sse.m - r.sse.sd
+
+# Plot differeince between actual SSE mean SSE from 250 randomized datasets - 1st: Log scale, 2nd: Normal scale
+
+xrange <- range(1:n.lev)
+yrange <- range(log(r.sse.plus),log(r.sse.min))
+plot(xrange,yrange, type='n',xlab='Cluster Solution', ylab='Log of SSE - Random SSE', main='Cluster Solustions against (Log of SSE - Random SSE)')
+lines(log(r.sse.m), type="b", col='blue')
+lines(log(r.sse.plus), type='l', col='red')
+lines(log(r.sse.min), type='l', col='red')
+legend('topright',c('SSE - random SSE', 'SD of SSE-random SSE'), col=c('blue', 'red'), lty=1)
+```
+
+This is looking at the difference between the average of the red lines and blue lines. At what point, do adding more clusters do not really add much. We see that after 6 clusters, we do not observe further improvement. This matches the result we obtained in the first part of Question 4, in our analysis on 250 simulations.
+
+
+Therefore, in k-means clustering, we decided to keep 6 clusters, and below we provide the means of each cluster per column variables.
+```{r}
+clust.level <- 6
 # Apply K-means cluster solutions - append clusters to CSV file
 fit <- kmeans(na.omit(kdata), clust.level)
 aggregate(kdata, by=list(fit$cluster), FUN=mean)
 ```
 
+
+Finally, it is possible to plot our k-means result in principles component space and discriminant analysis space.
+
+In Principal Component space, we see that the two major principal components account for ....% of the variability.
 ```{r}
 clust.out <- fit$cluster
 kclust <- as.matrix(clust.out)
@@ -283,13 +293,16 @@ write.table(kclust.out, file="kmeans_out.csv", sep=",")
 clusplot(kdata, fit$cluster, shade=F, labels=2, lines=0, color=T, lty=4, main='Principal Components plot showing K-means clusters')
 ```
 
+Below is our k-means result in discrimant analysis space.
 ```{r}
 plotcluster(kdata, fit$cluster, main="Five Cluster Solution in DA Space",
             xlab="First Discriminant Function", ylab="Second Discriminant Function")
 ```
 
+
 ## PROBLEM 5
 5.	Comment on the number of groups that seem to be present based on what you find above.
+
 
 List of industries:
 1) manufacturing 2) pharma/health 3) tech 4) transportation 5) utilities
