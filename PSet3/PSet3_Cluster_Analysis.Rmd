@@ -13,7 +13,7 @@ library(cluster)
 library(ape)
 library(tidyverse)
 ```
-
+ 
 ## Introduction to Our Data set
 
 **We're using a dataset on the New York Stock Exchange, which we obtained from Kaggle. There are 79 columns of variables measuring various aspects of stock performance of the S&P 500, with data from the past few years. In every row, we have a company, and each row name is set to the company's stock identifying ticker. Column names include various characteristics about the company ranging from Earnings and Total Costs, to Profit Marging and Price/Earnings ratio. For our cluster analysis, we formed a subset of this data set. For this, we selected 6 columns easily comparable across companies: Cash Ratio, Gross Margin, Operating Margin, Profit Margin, Quick Ratio, and Earnings Per Share.**
