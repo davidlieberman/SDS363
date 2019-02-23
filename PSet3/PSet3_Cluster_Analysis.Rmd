@@ -55,7 +55,7 @@ data_f <- scale(data_2)
 
 **Before we started our analysis, we standardized our data. For this we used the scale function in R. A standardized dataset is necessary mainly because we are calculating distance in the cluster analysis. Non-scaled columns could distort the distance calculations and offer a final clustering that does not have much explanatory power over our data.**
 
-**The columns of our subsetted data set includes only continuous variables. For this data set, for distance metrics, Euclidean or Manhattan would work well. Below in our analysis, we saw that Euclidean distance offers more descriptive clusters that, therefore for most of this analysis, we preferred Euclidean distance.**
+**The columns of our subsetted data set include only continuous variables. Therefore, for this data set, Euclidean or Manhattan distance metrics will work well. Below in our analysis, we observe that Euclidean distance offers more descriptive clusters, and thus for most of this analysis, we preferred Euclidean distance.**
 
 **Furthermore, because each company is unique and our data set includes all sorts of companies, there are likely to be outliers. Because simple linkage is more sensitive to outliers, agglemeration methods that are less sensitive to outliers would work better for our data set. Complete linkage is an example method that is suitable.**
 
@@ -78,6 +78,8 @@ plot(data_clust, xlab="",ylab="Distance", cex = .5, main="Clustering for Stocks"
 # Identify groups
 #rect.hclust(data_clust, k=5)
 rect.hclust(data_clust,k=7)
+
+
 ```
 **In this first model distance was calculated using the Euclidean method and a complete agglomeration method. The last command asks R to identify 7 clusters, since our data contains roughly 7 industries, and we think that might influence variables like risk and profit margin. From the dendogram, though, we can see three relatively larger clusters and four small single-stock clusters (CF, CMG, BIIB, APA). The left-most large cluster on the tree contains a variety of stocks, including those from companies in communications and manufacturing. The second cluster is smaller, but more specific to medical and other technology. The last cluster has a large number of stocks related to utilities and household products.**
 
@@ -115,7 +117,8 @@ plot(data_clust_3, xlab="",ylab="Distance",main="Clustering for Stocks", cex = .
 # Identify groups
 rect.hclust(data_clust_3,k=7)
 ```
-**Since Manhattan distance calculation could work well for high-dimensional datasets, and also places less weight upon outliers, we also decided to see whether a different distance calculation would produce different clusters from the Euclidean distance method. In fact, this method obtains four groups with more stocks in them. While these groups do not directly correspond with different industries, the right-most cluster is composed of large pharmaceutical stocks, while another cluster is composed of mainly tech, media, and communications related stocks. The mix of stocks that do not align with industry might have something to do with market share or company size--we can see that several large companies, like Amazon, CenterPoint Energy and Boeing are all located in one cluster.**
+
+**Since the Manhattan distance calculation could work well for high-dimensional datasets, and also places less weight upon outliers, we also decided to see whether a different distance calculation would produce different clusters from the Euclidean distance method. In fact, this method obtains four groups with more stocks in them. While these groups do not directly correspond with different industries, the right-most cluster is composed of large pharmaceutical stocks, while another cluster is composed of mainly tech, media, and communications related stocks. The mix of stocks that do not align with industry might have something to do with market share or company size--we can see that several large companies, like Amazon, CenterPoint Energy and Boeing are all located in one cluster.**
 
 ### Model 4
 
@@ -137,7 +140,7 @@ rect.hclust(data_clust_6, k=7)
 ## PROBLEM 3
 3.	If possible, run the SAS macro  or the R function to think about how many groups you want to retain (i.e. get the plots of cluster distance, R-squared, etc).  If you can’t run this, discuss how many groups you think are present.
 
-**We utilise the Euclidian distance method to compute distances and intiate clustering. Euclidean distance is particularly meaningful as our subsetted data set only includes continuous variables. We utilise Ward's method for hierarchical clustering. There are two reasons for this. Firstly, there may be a few outliers, and simple linkage is sensitive to outliers. Secondly, as explained in the lecture "Several studies of clustering suggest that Ward’s method or Average Linkage work the ‘best’" (pg. 324, Cluster Analysis Lecture). We opt for 7 clusters to begin when we plot the dendogram as we hypothesise that the stocks could potentially be divided along industry lines as mentioned prevoiusly. Our observations of the stocks suggest that there are 7 relevant industries. We included these industries and stock breakdown in the end of this analysis, under Question 5. When we perform distance cluster analysis with 7 clusters, the result seems to match our hypothesis--that is breakdown of companies supports a similar narrative.**
+**We utilise the Euclidian distance method to compute distances and intiate clustering. Euclidean distance is particularly meaningful as our subsetted data set only includes continuous variables. We utilise Ward's method for hierarchical clustering for two reasons. First, there may be a few outliers, and simple linkage is sensitive to outliers. Second, as explained in the lecture "several studies of clustering suggest that Ward’s method or Average Linkage work the ‘best’" (pg. 324, Cluster Analysis Lecture). We opt for 7 clusters along industry lines to begin when we plot the dendogram as we hypothesise that the stocks could–– as mentioned previously–– potentially be divided as such. Our observations of the stocks suggest that there are 7 relevant industries. We included these industries and stock breakdown in the end of this analysis, under Question 5. When we perform distance cluster analysis with 7 clusters, the result appears to match our hypothesis--that the clustering of companies supports a similar narrative.**
 
 ```{r}
 # Using the Euclidean distance method to compute distances to begin the clustering process
@@ -151,7 +154,7 @@ plot(clust1, cex=.9, xlab="",ylab="Distance",main="Clustering for NYSE Data")
 rect.hclust(clust1,k=7)
 ```
 
-**To build on our hypothesis of retaining 7 groups across industry lines, we evaluate the number of groups that we wish to retain by calculating the 'guidance statistics,' namely: R-Squared, Root-mean-square standard deviation, semi-partial R-squared, and cluster distance. Again, we utilise Euclidean distance and the Ward method. In computing these statistics and producing the plot, we opt to retain 7 groups. Starting with the RSQ, we see that it reaches a plateau when we choose 7 clusters. After 7, adding more clusters does not help us, the difference in the internal sum of squares is essentially unchanged. In RMSSTD, we observe a local minimum by 7 mark as well. Local minimum can often be seen interpreted as a sign of joining data points that are similar. These can be seen in the plot below.**
+**To build on our hypothesis of retaining 7 groups across industry lines, we evaluate the number of groups that we wish to retain by calculating the 'guidance statistics,' namely: R-Squared, Root-mean-square standard deviation, semi-partial R-squared, and cluster distance. Again, we utilise Euclidean distance and the Ward method. In computing these statistics and producing the plot, we opt to retain 7 groups. Starting with the RSQ, we see that it reaches a plateau when we choose 7 clusters. After 7, adding additional clusters is not particularly beneficial–– it is marginal–– as the difference in the internal sum of squares is essentially unchanged. In RMSSTD, we observe a local minimum at the 7 cluster mark as well. Local minimum can often be seen interpreted as a sign of joining data points that are similar. These can be seen in the plot below.**
 
 ```{r}
 # Loading the hclus_eval code
@@ -231,7 +234,7 @@ r.sse.sd <- apply(r.sse,1,sd)
 r.sse.plus <- r.sse.m + r.sse.sd
 r.sse.min <- r.sse.m - r.sse.sd
 
-# Plot differeince between actual SSE mean SSE from 250 randomized datasets - 1st: Log scale, 2nd: Normal scale
+# Plot difference between actual SSE mean SSE from 250 randomized datasets - 1st: Log scale, 2nd: Normal scale
 
 xrange <- range(1:n.lev)
 yrange <- range(log(r.sse.plus),log(r.sse.min))
@@ -242,11 +245,11 @@ lines(log(r.sse.min), type='l', col='red')
 legend('topright',c('SSE - random SSE', 'SD of SSE-random SSE'), col=c('blue', 'red'), lty=1)
 ```
 
-We calculate the internal sum of squares distances through 250 random partitions with the same number of clusters, each having the same sample size as their respective k-means partition counterparts.
+**We calculate the internal sum of squares distances through 250 random partitions with the same number of clusters, each having the same sample size as their respective k-means partition counterparts.**
 
-We look at the distance between our internal sum of squares blue line and red lines, and determine at what number of clusters that difference stops increasing (improving). That becomes our cluster number, and for our data, it is 6 clusters. We expected there to be 6 to 8 clusters, mainly through groups formed on an industry level.
+**We look at the distance between our internal sum of squares blue line and red lines, and determine at what number of clusters that difference stops increasing (improving). That becomes our cluster number, and for our data, it is 6 clusters. We expected there to be 6 to 8 clusters, mainly through groups formed on an industry level.**
 
-In the next step, we will check the difference between SSE of the actual data and the SSE of 250 randomized datasets.
+**In the next step, we will check the difference between SSE of the actual data and the SSE of 250 randomized datasets.**
 
 ```{r}
 # Calculate the mean and standard deviation of difference between SSE of actual data and SSE of 250 randomized datasets
@@ -271,9 +274,9 @@ lines(log(r.sse.min), type='l', col='red')
 legend('topright',c('SSE - random SSE', 'SD of SSE-random SSE'), col=c('blue', 'red'), lty=1)
 ```
 
-This analysis focuses on the difference between the average of the red lines and the blue lines. We see that after 6 clusters, we do not observe much change in the difference between the averages, which is to say adding addition clusters beyond 6 did not really bring any further improvement. This matches the result we obtained in the previous section in our analysis that included 250 simulated data sets.
+**This analysis focuses on the difference between the average of the red lines and the blue lines. We see that after 6 clusters, we do not observe much change in the difference between the averages, which is to say adding addition clusters beyond 6 did not really bring any further improvement. This matches the result we obtained in the previous section in our analysis that included 250 simulated data sets.**
 
-Therefore, in k-means clustering, we decided to keep 6 clusters, and below we provide the means of each cluster per column variables.
+**Therefore, in k-means clustering, we decided to keep 6 clusters, and below we provide the means of each cluster per column variables.**
 
 ```{r}
 clust.level <- 6
@@ -282,13 +285,13 @@ fit <- kmeans(na.omit(kdata), clust.level)
 aggregate(kdata, by=list(fit$cluster), FUN=mean)
 ```
 
-As hypothesised in the beginning, we see that each group has a unique characteristic in terms of profitability and liquidity/risk level. These are close to the average margins / cash ratios of said industries, as we will explain in Question 5.
+**As hypothesised in the beginning, we see that each group has a unique characteristic in terms of profitability and liquidity/risk level. These are close to the average margins / cash ratios of said industries, as we will explain in Question 5.**
 
-Finally, it is possible to plot our k-means result in principles component space and discriminant analysis space.
+**Finally, it is possible to plot our k-means result in principles component space and discriminant analysis space.**
 
-In Principal Component space, we see that the two major principal components account for 76.48% of the variability. This is expected, particularly because different types of margins may show correlation. For example, profit margin and gross margin, while different measures, often tend to be high or low at the same time. This is why although we can cut to two principal components, we are still able to account for more than 75% of the variability.
+**In Principal Component space, we see that the two major principal components account for 76.48% of the variability. This is expected, particularly because different types of margins may show correlation. For example, profit margin and gross margin, while different measures, often tend to be high or low at the same time. This is why although we can cut to two principal components, we are still able to account for more than 75% of the variability.**
 
-We see that some groups are smaller. This could be the case as for some industries, we only have a few companies, and those companies have a different profitability/risk structure than many of the other companies that belong to  different industries.
+**We see that some groups are smaller. This could be the case as for some industries, we only have a few companies, and those companies have a different profitability/risk structure than many of the other companies that belong to  different industries.**
 
 ```{r}
 clust.out <- fit$cluster
@@ -309,16 +312,31 @@ plotcluster(kdata, fit$cluster, main="Five Cluster Solution in DA Space",
 ## PROBLEM 5
 5.	Comment on the number of groups that seem to be present based on what you find above.
 
-Originally, we hypothesised that there could be 6 to 8 clusters. We based this hypothesis on different industries represented in our data set. Upon analyzing our data through scatter plots, histograms and boxplots, we observed that different industries had different profitability, liquidity and risk characteristics, and we believed that our clustering analysis would represent that.
+**Per our analysis, 7 groups seem to be present.**
+**Originally, we hypothesized that there could be 6 to 8 clusters. We based this hypothesis on different industries represented in our data set. Upon analyzing our data through scatter plots, histograms and boxplots, we observed that different industries had different profitability, liquidity and risk characteristics, and we believed that our clustering analysis would represent that.**
 
-Firstly, we performed hierarchical clustering. We saw that companies
+**First we performed hierarchical analysis using both Euclidean and Manhattan techniques to calculate distance, as well as single and complete agglomeration techniques to determine our clusters. After seeing that the first model in which we used single (q2 model 2) gave clusters which were not informational, since most stocks were grouped into one cluster, we decided not to use single agglomeration and proceed with complete agglomeration.**
+
+**The models that gave us the most information in hierarchical clustering were model 1 and model 3. In both of these models, R appeared to group stocks by aspects of their industry. This meant that the same stock could belong in different clusters between models (for example, a biopharmaceutical and healthcare technology company could be grouped with other technology stocks, or other medical stocks.**
+**This makes sense, because when investors are choosing investments, different groups of investors might see the same stock as belonging to different industries, or be interested in them for different reasons. Secondary characteristics of companies also contributed to the degree of hierarchical clustering in some way, which explains variance within clusters. More information about this was obtained through later techniques.**
+
+**We then analyzed RSQ, RMMSTD plots and concluded in part 3 that there were 7 clusters. This was supported by our distance clustering analysis, as we observed that data points on average followed industry grouping when they were partitioned in 7 clusters.**
+
+**As observed, not every cluster represented a unique industry. Some similar industries were grouped, while some companies had a slightly different structure than their industry pecers. These 'outlier' different companies had their own cluster in 2 cases. BIIB (Biogen) and APA (Apache Corporation) were examples. One reason these companies were isolated could be their growth phase differed from their industry peers. Yet, even with this, BIIB is connected to other biotech companies in the next branch, suggesting our earlier hypothesis about industry grouping.**
+
+**In Question 4, we performed k-means clustering. When we looked at the distance between our internal sum of squares blue line and red line, and ask at what point does the difference stops decreasing (improving), we observed that the optimal number of clusters were 6.**
+
+**While our analysis in Part 4 offered a cluster value that is one lower than what we concluded in Part 2 and 3, our final conclusion was choosing 7 clusters. This was mainly because cluster number that seemed optimal in Part 4 was changing between 6 and 7, depending on the random iteration. That is, as we were sampling 250 randomly simulated data sets, each simulation was offering a different chart, that favored 6 to 7 clusters. Hence, having 6 clusters in the random iteration in Part 4 did not necessarily contradict with having 7 clusters. Listing out the industries from our stocks shows roughly similar groupings (see appendix).**
 
 
 
-List of industries:
+**APPENDIX**
+
+List of Industries:
 1) manufacturing 2) pharma/health 3) tech 4) transportation 5) utilities
 6) oil and gas 7) communications
 
+List of Companies:
 1. AAL - American Airlines Group - airline
 2. ABBV - AbbVie Inc - pharma
 3. ABT - Abbott Laboratories- healthcare
