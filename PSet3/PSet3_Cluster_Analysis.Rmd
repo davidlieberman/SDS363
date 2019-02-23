@@ -242,7 +242,7 @@ lines(log(r.sse.min), type='l', col='red')
 legend('topright',c('SSE - random SSE', 'SD of SSE-random SSE'), col=c('blue', 'red'), lty=1)
 ```
 
-We calculate the internal sum of squares distances through 250 random partitions with the same number of clusters, each of the same sample size as their respective k-means partition counterparts.
+We calculate the internal sum of squares distances through 250 random partitions with the same number of clusters, each having the same sample size as their respective k-means partition counterparts.
 
 We look at the distance between our internal sum of squares blue line and red lines, and determine at what number of clusters that difference stops increasing (improving). That becomes our cluster number, and for our data, it is 6 clusters. We expected there to be 6 to 8 clusters, mainly through groups formed on an industry level.
 
@@ -271,8 +271,7 @@ lines(log(r.sse.min), type='l', col='red')
 legend('topright',c('SSE - random SSE', 'SD of SSE-random SSE'), col=c('blue', 'red'), lty=1)
 ```
 
-This analysis focuses on the difference between the average of the red lines and blue lines. In choosing the number of clusters, we observed the point at which adding more clusters did not really bring further improvement. We see that after 6 clusters, we do not observe much change in the difference between the averages. This matches the result we obtained in the previous section in our analysis that included 250 simulated data sets.
-
+This analysis focuses on the difference between the average of the red lines and the blue lines. We see that after 6 clusters, we do not observe much change in the difference between the averages, which is to say adding addition clusters beyond 6 did not really bring any further improvement. This matches the result we obtained in the previous section in our analysis that included 250 simulated data sets.
 
 Therefore, in k-means clustering, we decided to keep 6 clusters, and below we provide the means of each cluster per column variables.
 
@@ -295,17 +294,16 @@ We see that some groups are smaller. This could be the case as for some industri
 clust.out <- fit$cluster
 kclust <- as.matrix(clust.out)
 kclust.out <- cbind(kclust, data_f)
-write.table(kclust.out, file="kmeans_out.csv", sep=",")
 # Display Principal Components plot of data with clusters identified
 clusplot(kdata, fit$cluster, shade=F, labels=2, lines=0, color=T, lty=4, main='Principal Components plot showing K-means clusters')
 ```
 
 Below is our k-means result in discrimant analysis space.
+
 ```{r}
 plotcluster(kdata, fit$cluster, main="Five Cluster Solution in DA Space",
             xlab="First Discriminant Function", ylab="Second Discriminant Function")
 ```
-
 
 
 ## PROBLEM 5
