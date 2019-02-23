@@ -170,8 +170,6 @@ plot(data_clust_6,  main = "Plain dendrogram", hang = -1, cex = .5,
 3.	If possible, run the SAS macro  or the R function to think about how many groups you want to retain (i.e. get the plots of cluster distance, R-squared, etc).  If you can’t run this, discuss how many groups you think are present.
 
 ```{r}
-source("http://reuningscherer.net/stat660/R/HClusEval.R.txt")
-
 # We utilise the Euclidian distance method to compute distances and intiate clustering. Although we are cognisant of the succeptibility of Euclidean distance to outliers, we note that our data does not appear to have significant outliers, as revealed after plotting boxplots of our variables.
 
 dist1 <- dist(data_f, method="euclidean")
@@ -179,14 +177,17 @@ dist1 <- dist(data_f, method="euclidean")
 # We run the hclust() command to create the Hierarchical Ward Cluster (using Euclidean distance). We utilise Ward's method as "Several studies of clustering suggest that Ward’s method or Average Linkage work the ‘best’" (pg. 324, Cluster Analysis Lecture)
 clust1 <- hclust(dist1, method="ward.D")
 
-# We draw the dendogram of our data. We opt for 5 clusters to begin with as we hypothesise that the stocks could potentially be divided along industry lines and upon cursory glance, there are about 5 categories. (NB: We later find that there are more than 5 categories, 7 to be precise, but this was made after conducting the data anlaysis from question 4 onwards and by looking at the companies in greater detail.) We therefore opt for 5 clusters and delineate them with the red lines as such.
+# We draw the dendogram of our data. We opt for 5 clusters to begin with as we hypothesise that the stocks could potentially be divided along industry lines and upon cursory glance, there are about 5 categories. (NB: We later find that there are more than 5 categories, 7 to be precise, but this was made after conducting the data anlaysis from below and by looking at the companies in greater detail.) We therefore opt for 5 clusters and delineate them with the red lines as such.
 plot(clust1, cex=.9, xlab="",ylab="Distance",main="Clustering for NYSE Data")
-rect.hclust(clust1,k=5)
-
-# We evaluate the number of groups that we wish to retain by calculating the 'guidance statistics,' namely: R-Squared, Root-mean-square standard deviation, semi-partial R-squared, and cluster distance. In computing these statistics and producing the plot, we find that
-hclus_eval(data_scaled_t, dist_m = 'euclidean', clus_m = 'ward', plot_op = T)
+rect.hclust(clust1,k=7)
 ```
 
+```{r}
+# We evaluate the number of groups that we wish to retain by calculating the 'guidance statistics,' namely: R-Squared, Root-mean-square standard deviation, semi-partial R-squared, and cluster distance. In computing these statistics and producing the plot, we find that
+source("http://reuningscherer.net/stat660/R/HClusEval.R.txt")
+
+hclus_eval(data_f, dist_m = 'euclidean', clus_m = 'ward', plot_op = T)
+```
 
 ## PROBLEM 4
 4.	Run k-means clustering on your data.  Compare results to what you got in 3.)  Include a sum of squares vs. k (number of clusters) plot and comment on how many groups exist.
@@ -281,7 +282,6 @@ write.table(kclust.out, file="kmeans_out.csv", sep=",")
 # Display Principal Components plot of data with clusters identified
 clusplot(kdata, fit$cluster, shade=F, labels=2, lines=0, color=T, lty=4, main='Principal Components plot showing K-means clusters')
 ```
-
 
 ```{r}
 plotcluster(kdata, fit$cluster, main="Five Cluster Solution in DA Space",
