@@ -1,10 +1,8 @@
 ---
 title: "PSet 3"
 author: "Yavuz Ramiz Çolak, Ryo Tamaki, David Lieberman, Liana Wang"
-date: "2/21/2019"
-output:
-  pdf_document: default
-  html_document: default
+date: "2/22/2019"
+output: html_document
 ---
 
 ```{r setup, include=FALSE}
