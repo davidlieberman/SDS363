@@ -82,6 +82,7 @@ CSQPlot(data_transformed,label="Drug Attitudes")
 
 ## PROBLEM 2
 2). Compute the correlation matrix between all variables. Comment on relationships you do/do not observe. Do you think PCA will work well?
+
 ```{r}
 round(cor(data_transformed), 2)
 #version 1
@@ -125,6 +126,7 @@ parallelplot(pc1)
 
 ## PROBLEM 4
 4). For principle components you decide to retain, examine the loadings (principle components) and think about an interpretation for each retained component if possible.
+
 ```{r}
 unclass(pc1$loadings)[,1:3]
 ```

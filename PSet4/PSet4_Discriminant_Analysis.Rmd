@@ -1,0 +1,273 @@
+---
+title: "PSet 4"
+author: "Yavuz Ramiz Çolak, Ryo Tamaki, David Lieberman, Liana Wang"
+date: "3/10/2019"
+output: html_document
+---
+
+## PROBLEM 1
+1). Evaluate the assumptions implicit to Discriminant Analysis for your data – multivariate normality WITHIN each group (i.e. chi-square quantile plots) and similarity of covariances matrices (look at Box’s M or just look at raw standard deviations/covariance matrices). Comment on what you find. Comment on whether you think transformations might help your data to meet the assumptions of DA. If you think they might, make some transformations and find out! You might also want to make a matrix plot (or a pairs plot) to get a sense of what your data looks like two variables at a time (use different symbols for each group).
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list=ls())
+library(ggplot2)
+library(ggfortify)
+library(cowplot)
+library(corrplot)
+library(reshape2)
+library(tidyr)
+library(MASS)
+library(class)
+library(data.table)
+library(biotools)
+library(DiscriMiner)
+library(klaR)
+library(ks)
+library(sparr)
+library(spatstat)
+```
+
+
+```{r}
+data <- read.csv("https://pastebin.com/raw/LQ7WWrEC")
+data <- as.data.frame(data)
+head(data)
+```
+
+### Evaluating Univariate Normality (Exploratory)
+To evaluate univariate normality, we create boxplots of variables of interest by groups. 
+
+```{r}
+boxplot(hirecall ~ group, data=data, xlab="Groups", main="hirecall", ylim=c(10,60))
+```
+Our box plot of ‘hirecall’ shows an approximately normal distribution for groups 2 and 3 group, while group 1 has a heavy left skew.
+
+```{r}
+boxplot(lirecall ~ group, data=data, xlab="Groups", main="lirecall", ylim=c(10,60))
+```
+Our box plot of ‘lirecall’ shows an approximately normal distribution for each group, although groups 1 and 2 are somewhat skewed left and right, respectively.
+
+```{r}
+boxplot(hiunrem ~ group, data=data, xlab="Groups", main="hiunrem", ylim=c(0,1))
+```
+The groups seem mostly normally distributed, except group 1 seems to have a moderate right skew this time when measuring HI imagery unreminded memory, as opposed to HI Imagery recall as from our 'hirecall' boxplot above. 
+
+
+```{r}
+boxplot(liunrem ~ group, data=data, xlab="Groups", main="liunrem", ylim=c(0,1))
+```
+The groups appear to remain be mostly normally distributed, except for group 1 which has a strong right skew this time when measuring LO imagery unreminded memory, as opposed to LO Imagery recall as from our 'lirecall' boxplot above. 
+
+```{r}
+boxplot(store ~ group, data=data, xlab="Groups", main="store", ylim=c(0,1.5))
+```
+Groups 1 and 2 are visibly, though not extremely skewed right and left, respectively, while group 3 is approximately Normal (save for one outlier).
+
+
+```{r}
+boxplot(recog ~ group, data=data, xlab="Groups", main="recog", ylim=c(5,13))
+```
+This boxplot is very interesting, because it illustrates group 2 and 3's nearly nonexistent spreads. Conversely, group 1, although skewed from Normal, has a very wide range of response values for recognition memory. Note that this is a categorical variable. Regardless, we obtain useful information from these boxplots.
+
+Overall, looking at all these boxplots for each explanatory variable, while there are some cases of a group skewed from Normal, the on the whole, each of these explanatory variable data seem to approximately follow a univariate Normal distribution.
+
+```{r}
+QQPlot <- function(x, na.rm = TRUE){
+  plots <- list()
+  j <- 1
+  for (i in names(x)) {
+    plots[[i]] <- ggplot(x, aes_string(sample = i)) + stat_qq() + stat_qq_line() + xlab(names(x)[j]) + ylab("")
+    j <- j+1
+  }
+  plot_grid(plotlist = plots)
+}
+
+data_group1 <- data[data$group == 1,c(3:4,6:9)]
+data_group2 <- data[data$group == 2,c(3:4,6:9)]
+data_group3 <- data[data$group == 3,c(3:4,6:9)]
+```
+
+#### Group 1
+```{r}
+QQPlot(data_group1)
+```
+As observed in the skewness in some of our boxplots of group 1 above, there are some notable deviations from univariate Normality, but on the whole, we don't think these deviations will be serious enough to impede our analysis going forward, and we will conclude that overall that the group 1 data for each of the explanatory variables approximately follows a univariate Normal distribution.
+
+#### Group 2
+```{r}
+QQPlot(data_group2)
+```
+These univariate quantile-quantile plots look much better for group 2, and despite some deviations for store and liunrem, and single outliers in lirecall and recog, group 2 data for all explanatory variables follow an approximately univariate Normal distribution.
+
+#### Group 3
+```{r}
+QQPlot(data_group3)
+```
+These univariate quantile-quantile plots for group 3 look great! Group 3 data for all explanatory variables follow an approximately univariate Normal distribution.
+
+
+### Evaluating Multivariate Normality
+To evaluate multivariate normality within groups, we plot chi-square quantile-quantile plots for each group.
+```{r}
+source("http://www.reuningscherer.net/STAT660/R/CSQPlot.r.txt")
+
+par(mfrow=c(1,2))
+CSQPlot(data[data$group == 1, c(3,4,6,7,8)], label="Group 1")
+CSQPlot(data[data$group == 2, c(3,4,6,7,8)], label="Group 2")
+CSQPlot(data[data$group == 3, c(3,4,6,7,8)], label="Group 3")
+```
+Since the data falls within the 95% confidence intervals for every group, it is safe to consider the data roughly multivariate normal and thus, we can use our data set for discriminant analysis. Because normality assumptions are roughly fulfilled, we see no need to transform our data.
+
+### Evaluating Similarity of Covariances Matrices
+
+Matrix plot to look at differences between groups
+```{r}
+plot(data[,c(3:4,6:9)], col = 2*(as.numeric(data$group)), pch = as.numeric(data$group)+15,cex=1.2)
+```
+
+```{r}
+for (i in 1:3){
+  print(paste("Covariance Matrix for Group", i))
+  covariance <- cov(data[data$group == i, c(3:4,6:9)])
+  print(covariance)
+  cat(c("log-determinant", log(det(covariance)), "\n\n"))
+}
+```
+By visual inspection, we can see that the covariance matrices seem to be quite different. Some notible examples include the group 2 hirecall-recog covariance to be 4.368, while in group 3 it is -0.0875; additionally, the group 1 hirecall-lirecall covariance is 15.100, while in group 2 it is 52.648. Furthermore, the log-determinants for each group seem to be quite different as well: -8.9412, -7.963, and -12.384 for groups 1, 2, and 3, respectively.
+
+```{r}
+boxM(data[,c("hirecall","lirecall","hiunrem","liunrem","store","recog")], data$group)
+```
+It comes as no suprise that the Box's M test yields an approximately zero p-value, registering a significant difference between each group's covariance matrix, as alluded to from our earlier visual inspection of substantial differences in covariance matrix elements and log-determinants between groups. These significant differences between each group's covariance matrix means that our data set is not suitable for Linear Discriminant Analysis. Therefore, we will proceed by doing Quadratic Discriminant Analysis instead. Despite the differences between covariance matrices, according to our chi-squared quantile-quantile plots above, our groups have an approximately multivariate Normal distribution within groups, which is enough to make our data suitable for QDA.
+
+
+
+## PROBLEM 2
+2). Perform stepwise discriminant analysis on your data. Comment on which model seems the best. Use quadratic discriminant analysis if appropriate. If you end up with only one significant discriminating variable, you might want to just force a second variable in the model (i.e. add a technically ‘nonsignificant’ discriminator).
+
+```{r}
+alz.data <- data[,c(3:4,6:9)] # the data 
+alz.group <- data[,10] # the classes 
+alz.stepwise.qda <- stepclass(alz.data, alz.group, "qda", start.vars = "liunrem") 
+alz.stepwise.qda
+plot(alz.stepwise.qda)
+```
+
+\newpage
+
+## PROBLEM 3
+3). Comment on whether there is statistical evidence that the multivariate group means are different (i.e. Wilks' Lambda test).
+
+```{r}
+alz.manova <- manova(as.matrix(data[,c(3:4,6:9)]) ~ data$group)
+```
+
+```{r}
+summary.aov(alz.manova)
+```
+First, considering the results of the test of equality of between group means (ANOVA) for each univariate explanatory variable, we find that the p-values are are all approximately zero (ie. significant) for all of the explanatory variables. So the univariate means of each explanatory variable are significantly different between all three groups.
+
+```{r}
+summary.manova(alz.manova,test="Wilks")
+```
+Second, considering the results of the multivariate Wilks' Lambda (0.2735) between multivariate group means (MANOVA), we find that the p-value of the approximated F-statistic (16.824) is approximately zero (ie. significant). So the multivariate mean is significantly different between all three groups.
+
+
+## PROBLEM 4
+4). How many discriminant functions are significant? What is the relative discriminating power of each function?
+
+\newpage
+
+## PROBLEM 5
+5). Use classification, both regular and leave-one-out (or cross-validation) to evaluate the discriminating ability of your functions.
+
+QDA, no cross validation
+```{r}
+alz.qda <- qda(data[,c("hirecall","lirecall","hiunrem","liunrem","store","recog")], grouping=data$group, CV=FALSE) 
+table(data$group, predict(alz.qda)$class)
+```
+When using all the availible data to construct the model, our classification results for quadratic discriminant analysis show that the discriminating ability of our discriminant functions were highly effective. Group 1 predictions were largely successful. Our model correctly predicted 14/15 group 1 individuals, with only 1/15 group 1 individuals being incorrectly placed into group 2. Group 2 predictions were largely successful. The discriminant functions placed only 12/14 group 2 individuals correctly, with 14.3% of group 2 individuals getting placed incorrectly in group 3. Group 3 predictions were entirely successful. Our model correctly predicted all 16/16 of Group 3 individuals. Contextualizing these results, it appears that the model is able to discern, with a 93.3% ‘accuracy’ rate, individuals with Alzheimers from both the control group and individuals with depression. However, the model's biggest failure was in discerning depressed individuals from those who are not, with 14.3% truly depressed individuals being categorized as part of the control group. Finally, the model seems to be able to discern individuals in the control group extremely well. Overall, when using all the availible data to construct the model, the resulting discriminant functions are able to place data into the correct group with a 93.3% success rate. 
+
+```{r}
+alz.cv.qda <- qda(data[,c("hirecall","lirecall","hiunrem","liunrem","store","recog")], grouping=data$group, CV=TRUE) 
+table(data$group, alz.cv.qda$class)
+```
+When leaving out 10% of the availible data to construct the model (as is the case with cross-validation), our classification results for quadratic discriminant analysis are less successful. Group 1 predictions were largely successful. Our model correctly predicted 13/15 group 1 individuals, with only 2/15 group 1 individuals being incorrectly placed into group 2. Group 2 predictions were less successful. The discriminant functions placed only 8/14 group 2 individuals correctly, with 6 group 2 individuals getting placed incorrectly. Group 3 predictions were roughly as unsuccessful as group 2 predictions. Our discriminant functions incorrectly placed 6 group 3 individuals into group 2. Contextualizing these results, it appears that the model is able to discern, with a 86.7% ‘accuracy’ rate, individuals with Alzheimers from both the control group and individuals with depression. However, the model's biggest failure was in discerning depressed individuals from those who are not, with 28.6% truly depressed individuals being categorized as part of the control group. Finally, the cross-validated model seems to be able to discern individuals in the control group with an 62.5% ‘accuracy’ rate, but again, most of the error seems to arise from differentiating between the control group and those with depression. Overall, the discriminant functions of the cross-validated model are able to place data into the correct group with a 68.9% success rate.
+
+
+
+## PROBLEM 6
+6). Provide some evidence as to which of your original variables are the ‘best’ discriminators amongst your groups (look at standardized discriminant coefficients).
+
+\newpage
+
+## PROBLEM 7
+7). Make score plots for the first two or three DA function scores (be sure to use different symbols/colors for each group). Comment on what you see.
+
+Partition of original variable space using quadratic discriminant analysis
+```{r}
+partimat(as.factor(data$group)~hirecall+lirecall+hiunrem+liunrem+store+recog, data=data, method="qda") 
+```
+
+And special attention to the partition of the variable space using the QDA variables, hiunrem and recog, that were identified as significant in Part 6
+
+```{r}
+partimat(as.factor(data$group)~hiunrem+recog, data=data, method="qda") 
+```
+
+
+
+## PROBLEM 8
+8). Bonus (and optional)– try kernel smoothing or k-nearest neighbors and get the admiration of your professor and TA (and some extra credit)! You’ll have to use SAS or R for this.
+
+```{r}
+data.var <- data[,c(6,9)]
+data.gr <- data[,10] 
+kda.fhat <- kda(x=data.var, x.group=data.gr)
+plot(kda.fhat)
+```
+This is the kernel smoothing 2D map using the 'hiunrem' and 'recog' which identified as significant in Part 6. Black is group 1, red is group 2, green is group 3.
+
+```{r}
+data.var <- data[,c(3,6,9)]
+data.gr <- data[,10] 
+H <- Hkda(x=data.var, x.group=data.gr, bw="plugin")
+kda.fhat <- kda(x=data.var, x.group=data.gr, Hs=H)
+plot(kda.fhat)
+```
+This is the kernel smoothing 3D map using the 'hiunrem' and 'recog' variables, and a third variable 'hirecall' that was often identified as significant by stepwise selection in R. Red is group 1, green is group 2, and blue is group 3.
+
+```{r}
+x.1 <- jitter(data[data$group == 1,6],1)
+y.1 <- jitter(data[data$group == 1,9],1)
+
+x.2 <- jitter(data[data$group == 2,6],1)
+y.2 <- jitter(data[data$group == 2,9],1)
+
+x.3 <- jitter(data[data$group == 3,6],1)
+y.3 <- jitter(data[data$group == 3,9],1)
+
+pp.1 <- ppp(x.1, y.1, c(-5,5), c(3,18))
+pp.2 <- ppp(x.2, y.2, c(-5,5), c(3,18))
+pp.3 <- ppp(x.3, y.3, c(-5,5), c(3,18))
+
+plot(bivariate.density(pp.1, h0=1.5, hp=1, adapt=TRUE), xlab="hiunrem", ylab="recog", main="Group 1")
+plot(bivariate.density(pp.2, h0=1.5, hp=1, adapt=TRUE), xlab="hiunrem", ylab="recog", main="Group 2")
+plot(bivariate.density(pp.3, h0=1.5, hp=1, adapt=TRUE), xlab="hiunrem", ylab="recog", main="Group 3")
+```
+This is adaptive kernel smoothing for each group, using  Abramson's variable-bandwidth estimator as implemented in the 'sparr' package.
+
+```{r}
+results <- c()
+for (i in 1:45){
+  test_point <- data[i,]
+  train_data <- data[-i,]
+  knn_prediction <- as.vector(knn(train = train_data[,c(6,9)], test = test_point[,c(6,9)], cl = train_data[,10], k = 7))
+  truth <- as.vector(data[i,10])
+  results[i] <- truth == knn_prediction
+}
+
+mean(results)
+```
+Leaving out one point, and predicting its group using the k-nearest neighbor method, and repeating this for all 45 points in our dataset, this method predicts the group with an approximately 73.3% success rate.

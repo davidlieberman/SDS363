@@ -1,0 +1,107 @@
+---
+title: 'Data Cleaning'
+author: "David Lieberman, Yavuz Ramiz Çolak, Ryo Tamaki, Liana Wang"
+date: "March 10th, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list=ls())
+library(tidyr)
+library(MASS)
+library(data.table)
+library(dplyr)
+library(tidyverse)
+```
+
+### Ramiz
+```{r}
+data <- read.csv("fundamentals.csv")
+data <- data[data$Period.Ending == "2015-12-31" | data$Period.Ending == "2014-12-31",]
+##selecting certain columns 
+index1 <- c(1, 2, 3, 7, 8, 10, 11, 15, 18, 25, 26, 29, 31, 32, 33, 34, 38, 42, 48, 49, 61, 62, 63, 69, 72, 73, 78, 79)
+data <- data[ , index1]
+data$X <- NULL
+
+
+#omitting NAs 
+data <- na.omit(data)
+t <- table(data$Ticker.Symbol)
+x <- which(t==2)
+y <- names(t)[x]
+
+data2 <- data[data$Ticker.Symbol %in% y,]
+table(data2$Ticker.Symbol)
+```
+
+```{r}
+price <- read.csv("prices.csv")
+price$open <- NULL 
+price$low <- NULL 
+price$high <- NULL 
+price$volume <- NULL
+
+price2 <- price
+
+#cleaning date and selecting for 2014/2015 
+price2$date <- gsub("00:00:00", "", price2$date)
+price2 <- price2[price2$date == "2014-12-31" | price2$date == "2015-12-31",]
+
+#selecting for the right stocks
+price2 <- price2[price2$symbol %in% y,]
+table(price2$symbol)
+
+data2 <- data[data$Ticker.Symbol %in% price2$symbol,]
+
+#calculating % change 
+sort.p2 <- with(price2, price2[order(price2$symbol),])
+rownames(sort.p2) <- NULL
+wide <- sort.p2 %>% group_by(symbol) %>% mutate(obs = row_number()) %>% gather(var, val, close) %>%
+  unite(comb, obs, var) %>% spread(comb, val)
+
+
+for (i in 1:227) {
+  wide[i, 4] <- wide[i+227, 4]
+}
+
+wide$percent_change <- wide$`1_close`
+
+for (i in 1:454) {
+  wide$percent_change[i] <- (wide$`2_close`[i]-wide$`1_close`[i])/wide$`1_close`[i]
+}
+
+wide <- wide[1:227,]
+
+wide <- wide[rep(1:227,each=2),]
+
+wide_2 <- cbind(data2, wide$percent_change)
+
+colnames(wide_2)
+wide_2$Returns <- wide_2$`wide$percent_change`
+wide_2$Returns <- ifelse(wide_2$Returns > -0.05402873512, "High", "Low")
+
+new_data <- wide_2
+```
+
+
+### David
+```{r}
+data <- new_data[c(FALSE, TRUE),]
+data <- data[-107,]
+data_new <- read.csv("sp500-companylist.csv")[,c(1,3)]
+
+sector <- c()
+for (i in 1:length(data$Ticker.Symbol)){
+  index <- which(data_new[,1] == as.vector(data$Ticker.Symbol)[i])
+  sector[i] <- as.character(data_new[index,2])
+}
+
+data <- cbind(sector, data)
+data <- data[,c(2,1,4:30)]
+
+data
+
+write.csv(data, file = "NYSE_DATA.csv")
+```
+

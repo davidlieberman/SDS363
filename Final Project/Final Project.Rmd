@@ -1,0 +1,143 @@
+---
+title: 'S&DS363 Final Project'
+author: "David Lieberman"
+date: "March 10th, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list=ls())
+options(warn=-1)
+library(ggplot2)
+library(tidyr)
+library(MASS)
+library(ggfortify)
+library(data.table)
+library(biotools)
+library(DiscriMiner)
+library(klaR)
+```
+
+```{r}
+data <- read.csv("https://pastebin.com/raw/1kHpNk7R")
+data <- data[,-1]
+working_data <- data
+#working_data <- data[- as.vector(which(data$sector %in% c("Financials", "Real Estate", "Telecommunications Services"))),]
+working_data <- data[- as.vector(which(data$sector %in% c("Financials"))),]
+working_data <- working_data[,-c(3,5,9,11,15,19,20,22)]
+data_numeric <- working_data[,-c(1,2,21)]
+data_transformed <- data_numeric
+
+for (j in 1:ncol(data_transformed)){
+  if (any(is.na(log(data_transformed[,j])) == TRUE)){
+    data_transformed[,j] <- log(data_transformed[,j]+abs(min(data_transformed[,j]))+1)
+  }
+  else if (any(is.infinite(log(data_transformed[,j])) == TRUE)){
+    for (i in 1:nrow(data_transformed)){
+      if (is.infinite(log(data_transformed[i,j]))){
+        data_transformed[i,j] <- data_transformed[i,j]
+      }
+      else{
+        data_transformed[i,j] <- log(data_transformed[i,j])
+      }
+    }
+  }
+  else{
+    data_transformed[,j] <- log(data_transformed[,j])
+  }
+}
+
+data_transformed <- as.data.frame(data_transformed)
+
+setattr(data_transformed, "row.names", as.vector(working_data$Ticker.Symbol))
+data_transformed
+```
+
+```{r}
+QQPlot <- function(x, na.rm = TRUE){
+  plots <- list()
+  j <- 1
+  for (i in names(x)) {
+    plots[[i]] <- ggplot(x, aes_string(sample = i)) + stat_qq() + stat_qq_line() + xlab(names(x)[j]) + ylab("")
+    j <- j+1
+  }
+  plots
+}
+
+QQPlot(data_transformed)
+```
+
+```{r}
+CSQPlot<-function(vars,label="Chi-Square Quantile Plot"){
+   #usually, vars is xxx$residuals or data from one group and label is for plot
+     x<-cov(scale(vars),use="pairwise.complete.obs")
+     squares<-sort(diag(as.matrix(scale(vars))%*%solve(x, tol=1e-20)%*%as.matrix(t(scale(vars)))))
+     quantiles<-quantile(squares)
+     hspr<-quantiles[4]-quantiles[2]
+     cumprob<-c(1:length(vars[,1]))/length(vars[,1])-1/(2*length(vars[,1]))
+     degf<-dim(x)[1]
+     quants<-qchisq(cumprob,df=degf)
+     gval<-(quants**(-1+degf/2))/(exp(quants/2)*gamma(degf/2)*(sqrt(2)**degf))
+     scale<-hspr / (qchisq(.75,degf)-qchisq(.25,degf))
+     se<-(scale/gval)*sqrt(cumprob*(1-cumprob)/length(squares))
+     lower<-quants-2*se
+     upper<-quants+2*se
+    plot(quants,squares,col='red',pch=19,cex=1.2,xlab="Chi-Square Quantiles",
+     ylab=label,main=paste("Chi-Square Quantiles for",label),ylim=range(upper,lower, squares) , xlim=range(c(0,quants)))
+    lines(c(0,100),c(0,100),col=1)
+    lines(quants,upper,col="blue",lty=2,lwd=2)
+    lines(quants,lower,col="blue",lty=2,lwd=2)
+    legend(0,range(upper,lower)[2]*.9,c("Data","95% Conf Limits"),lty=c(0,2),col=c("red","blue"),lwd=c(2,2),
+      pch=c(19,NA))
+}
+```
+
+```{r}
+CSQPlot(data_transformed)
+```
+
+```{r}
+pc1 <- princomp(data_transformed, cor=TRUE)
+pc2 <- prcomp(data_transformed, scale=TRUE)
+```
+
+```{r}
+screeplot(pc2,type="lines",col="red",lwd=2,pch=19,cex=1.2,main="Scree Plot of Raw Drug Data")
+```
+To see the cumulative variability accounted for by our components
+```{r}
+print(summary(pc1),digits=2)
+unclass(pc1$loadings)[,1:3]
+```
+
+```{r}
+varimax3 <- varimax(pc2$rotation[,1:3])
+PCA_Data <- scale(as.matrix(data_transformed)) %*% varimax3$loadings
+PCA_Data <- as.data.frame(PCA_Data)
+
+sectors <- as.vector(working_data$sector)
+
+PCA_Data <- cbind(sectors, PCA_Data)
+
+for (name in unique(sectors)){
+  print(paste("Covariance Matrix for", name))
+  print(cov(PCA_Data[PCA_Data$sector == name, 2:4]))
+  cat(c("log-determinant", log(det(cov(PCA_Data[PCA_Data$sector == name, 2:4]))), "\n\n"))
+}
+
+boxM(PCA_Data[,c("PC1","PC2","PC3")], PCA_Data$sector)
+```
+
+```{r}
+par(mar=c(2,15,2,2))
+boxplot(PC1 ~ sectors, data=PCA_Data, horizontal = T, main="PC1 by Industry", las=2)
+boxplot(PC2 ~ sectors, data=PCA_Data, horizontal = T, main="PC2 by Industry", las=2)
+boxplot(PC3 ~ sectors, data=PCA_Data, horizontal = T, main="PC3 by Industry", las=2)
+```
+
+```{r}
+for (name in unique(sectors)){
+  CSQPlot(PCA_Data[which(sectors==name),][-1], label=name)
+}
+```
