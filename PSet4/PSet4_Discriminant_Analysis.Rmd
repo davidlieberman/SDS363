@@ -259,15 +259,20 @@ plot(bivariate.density(pp.3, h0=1.5, hp=1, adapt=TRUE), xlab="hiunrem", ylab="re
 This is adaptive kernel smoothing for each group, using  Abramson's variable-bandwidth estimator as implemented in the 'sparr' package.
 
 ```{r}
-results <- c()
-for (i in 1:45){
-  test_point <- data[i,]
-  train_data <- data[-i,]
-  knn_prediction <- as.vector(knn(train = train_data[,c(6,9)], test = test_point[,c(6,9)], cl = train_data[,10], k = 7))
-  truth <- as.vector(data[i,10])
-  results[i] <- truth == knn_prediction
+results <- matrix(nrow = 45, ncol = 20)
+for (j in 1:20) {
+  for (i in 1:45) {
+    test_point <- data[i,]
+    train_data <- data[-i,]
+    knn_prediction <- as.vector(knn(train = train_data[,c(6,9)], test = test_point[,c(6,9)], cl = train_data[,10], k = j))
+    truth <- as.vector(data[i,10])
+    results[i,j] <- truth == knn_prediction
+  }
 }
 
-mean(results)
+best_k <- which.max(colMeans(results))
+best_k
+success_rate <- colMeans(results)[best_k]
+success_rate
 ```
 Leaving out one point, and predicting its group using the k-nearest neighbor method, and repeating this for all 45 points in our dataset, this method predicts the group with an approximately 73.3% success rate.
