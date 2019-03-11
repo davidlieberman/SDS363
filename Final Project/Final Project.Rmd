@@ -10,9 +10,13 @@ knitr::opts_chunk$set(echo = TRUE)
 rm(list=ls())
 options(warn=-1)
 library(ggplot2)
+library(ggfortify)
+library(cowplot)
 library(tidyr)
 library(MASS)
-library(ggfortify)
+library(corrplot)
+library(mvtnorm)
+library(ellipse)
 library(data.table)
 library(biotools)
 library(DiscriMiner)
@@ -94,8 +98,30 @@ CSQPlot<-function(vars,label="Chi-Square Quantile Plot"){
 ```
 
 ```{r}
-CSQPlot(data_transformed)
+CSQPlot(data_transformed, label="data_transformed")
 ```
+
+```{r}
+correlation_matrix <- setattr(as.data.frame(round(cor(data_transformed), 2)), "row.names", names(data_transformed))
+correlation_matrix
+```
+
+```{r}
+correlation_vector <- as.vector(as.matrix(correlation_matrix))
+correlation_vector <- correlation_vector[-as.vector(which(correlation_vector == 1))]
+sorted_correlations <- correlation_vector[order(-abs(correlation_vector))][c(FALSE, TRUE)]
+head(sorted_correlations)
+```
+
+```{r}
+#version 1
+corrplot(cor(data_transformed), method = "color", tl.cex=0.6)
+#version 2
+corrplot.mixed(cor(data_transformed), lower.col="black", upper = "ellipse", tl.col = "black", number.cex=0.5, order = "hclust",tl.pos = "lt", tl.cex=0.6)
+```
+
+
+
 
 ```{r}
 pc1 <- princomp(data_transformed, cor=TRUE)
@@ -105,6 +131,7 @@ pc2 <- prcomp(data_transformed, scale=TRUE)
 ```{r}
 screeplot(pc2,type="lines",col="red",lwd=2,pch=19,cex=1.2,main="Scree Plot of Raw Drug Data")
 ```
+
 To see the cumulative variability accounted for by our components
 ```{r}
 print(summary(pc1),digits=2)

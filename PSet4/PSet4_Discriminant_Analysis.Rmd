@@ -275,4 +275,4 @@ best_k
 success_rate <- colMeans(results)[best_k]
 success_rate
 ```
-Leaving out one point, and predicting its group using the k-nearest neighbor method, and repeating this for all 45 points in our dataset, this method predicts the group with an approximately 73.3% success rate.
+Leaving out one point, and predicting its group using the k-nearest neighbor method, and repeating this for all 45 points in our dataset, this method predicts the group with an approximately 75.6% success rate.
