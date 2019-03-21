@@ -18,6 +18,8 @@ library(corrplot)
 library(mvtnorm)
 library(ellipse)
 library(data.table)
+library(knitr)
+library(kableExtra)
 library(biotools)
 library(DiscriMiner)
 library(klaR)
@@ -62,15 +64,14 @@ QQPlot <- function(x, na.rm = TRUE){
     plots[[i]] <- ggplot(x, aes_string(sample = i)) + stat_qq() + stat_qq_line() + xlab(names(x)[j]) + ylab("")
     j <- j+1
   }
-  print(plot_grid(plotlist = plots[1:8]))
-  print(plot_grid(plotlist = plots[9:16]))
-  print(plot_grid(plotlist = plots[17:20]))
+  print(plot_grid(plotlist = plots[1:9]))
+  print(plot_grid(plotlist = plots[10:18]))
 }
 ```
 
 First, let's take a look at the data and make quantile-quantile plots for each performance metric to see if each variable is approximately univariate Normal.
 ```{r}
-working_data[,1:6]
+kable(working_data[1:10,]) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed"), font_size = 5)
 QQPlot(data_numeric)
 ```
 
@@ -148,7 +149,7 @@ As we can see, our data is very far from multivariate Normal -- nearly all of th
 Let's construct a correlation matrix for our data. Hopefully, some variables will be highly correlated so our data will be a good match for Principal Component Analysis.
 ```{r}
 correlation_matrix <- setattr(as.data.frame(round(cor(data_transformed), 2)), "row.names", names(data_transformed))
-correlation_matrix[,1:6]
+kable(correlation_matrix) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
 ```
 
 
@@ -180,10 +181,11 @@ pc2 <- prcomp(data_transformed, scale=TRUE)
 
 ```{r}
 print(summary(pc2),digits=2)
-pc1$loadings[,1:4]
+loadings <- as.data.frame(pc1$loadings[,1:4])
+kable(loadings) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
 ```
 
-The table above shows that if we want to explain at least 50% of the variance across our data, we should keep the first four principal components, which explain 51.8% of the variance. Looking loading coefficients for the first four principal components (major contributor:= abs(loading coefficient) > 0.3)
+The table above shows that if we want to account for at least 50% of the variance across our data, we should keep the first four principal components, which explain 51.8% of the variance total. Looking at the loading coefficients for the first four principal components ("major contributor":= abs(loading coefficient) > 0.3)
 
 ## ECON KNOWLEDGE PLEASE
 
@@ -205,22 +207,62 @@ The table above shows that if we want to explain at least 50% of the variance ac
 *It seems that all of these variables deal with ...* 
 
 
-I would need to use the first three components (Comp1, Comp2, and Comp3), which explain approximately 94.7% of the total variance. Notably, only the eigenvalue for Comp1 is greater than 1; however, if I wanted to be conservative and explain at least 95% of the variation, I could use Comp1-4. The scree plot shown in Figure 2 below reiterates that the great majority of the total variance in my data is explained by Comp1. Comp5 and Comp6 do not contribute much additional information.
-
-
-According to the screeplot, we would cut above the first "elbow," which in this case would mean we would only keep the first principal component. However, we chose to 
 ```{r}
 screeplot(pc2,type="lines",col="red",lwd=2,pch=19,cex=1.2,main="Scree Plot of Raw Drug Data")
 ```
 
+As we can see from the scree plot above, successive components beyond the fourth principal component do little to explain the remaining variance of our data. According to the cut above the first "elbow" philosophy, we would only keep the first principal component. However, our priority is explaining at least 50% of the variance of these data, so we continue with our decision to retain the first four principal components.
+
+```{r}
+ciscoreplot<-function(x,comps,namevec){
+  y1<-sqrt(5.99*(x$sdev[comps[1]]^2))
+  ymod<-y1-y1%%.05
+  y1vec<-c(-y1,seq(-ymod,ymod,by=0.05),y1)
+  y2vecpos<-sqrt((5.99-(y1vec^2)/x$sdev[comps[1]]^2)*x$sdev[comps[2]]^2)
+  y2vecneg<--sqrt((5.99-(y1vec^2)/x$sdev[comps[1]]^2)*x$sdev[comps[2]]^2)
+  y2vecpos[1]<-0
+  y2vecneg[1]<-0
+  y2vecpos[length(y2vecpos)]<-0
+  y2vecneg[length(y2vecneg)]<-0
+  plot(x$scores[,comps[1]],x$scores[,comps[2]],pch=19,cex=1.2,ylim=c(min(y2vecneg,x$scores[,comps[2]]),max(y2vecpos,x$scores[,comps[2]])),
+    main="PC Score Plot", xlab=paste("Scores for PC",comps[1],sep=" "), ylab=paste("Scores for PC",comps[2],sep=" "),
+    xlim=c(min(y1vec,x$scores[,comps[1]]),max(y1vec,x$scores[,comps[1]])))
+    lines(y1vec,y2vecpos,col="Red",lwd=2)
+    lines(y1vec,y2vecneg,col="Red",lwd=2)
+  outliers<-((x$scores[,comps[1]]^2)/(x$sdev[comps[1]]^2)+(x$scores[,comps[2]]^2)/(x$sdev[comps[2]]^2))>5.99
+  points(x$scores[outliers,comps[1]],x$scores[outliers,comps[2]],pch=19,cex=1.2,col="Blue")
+  text(x$scores[outliers,comps[1]],x$scores[outliers,comps[2]],col="Blue",lab=namevec[outliers], pos=4)
+}
+```
+
+
+## GETTING SOME ERRORS HERE
+```{r}
+ciscoreplot(pc1,c(1,2), names(working_data))
+ciscoreplot(pc1,c(1,3), names(working_data))
+ciscoreplot(pc1,c(1,4), names(working_data))
+```
+
+## NEED MORE ANALYSIS HERE
+
+Visualizing the score plot with a 95% confidence interval ellipse, there are some clear outliers. Let's take a look at the biplots.
+
 ```{r}
 biplot(pc2,choices=c(1,2),pc.biplot=T)
 biplot(pc2,choices=c(1,3),pc.biplot=T)
+biplot(pc2,choices=c(1,4),pc.biplot=T)
 ```
 
+The biplots corroborate what was seen in the loading coefficients table. The variables we identified as "major contibutors" for each principal component have large magnitude arrows pointing roughly along the axis of the respective principal components they are associated with. Additionally, we can see the ticker symbols of some major outliers that stray far from the tight clusters along certain principal component axes. 'APA' in PC2 and PC3; and 'PM,' 'XOM,' 'APC,' and 'FCX' in PC4.
+
+
+
+Let's take a look at boxplots of each stock's principal component values, grouped by industry.
+
+## SOMETHING WEIRD, NOT SEEING APA WITH A REALLY LOW PC2 SCORE AS SEEN IN THE BIPLOT
 ```{r}
-varimax3 <- varimax(pc2$rotation[,1:3])
-PCA_Data <- scale(as.matrix(data_transformed)) %*% varimax3$loadings
+varimax4 <- varimax(pc2$rotation[,1:4])
+PCA_Data <- scale(as.matrix(data_transformed)) %*% varimax4$loadings
 PCA_Data <- as.data.frame(PCA_Data)
 
 Sectors <- as.vector(working_data$Sector)
@@ -229,37 +271,45 @@ PCA_Data <- cbind(Sectors, PCA_Data)
 ```
 
 ```{r}
-par(mar=c(2,15,2,2))
+par(mar=c(3,15,2,2))
 boxplot(PC1 ~ Sectors, data=PCA_Data, horizontal = T, main="PC1 by Industry", las=2)
 boxplot(PC2 ~ Sectors, data=PCA_Data, horizontal = T, main="PC2 by Industry", las=2)
 boxplot(PC3 ~ Sectors, data=PCA_Data, horizontal = T, main="PC3 by Industry", las=2)
+boxplot(PC4 ~ Sectors, data=PCA_Data, horizontal = T, main="PC4 by Industry", las=2)
+```
+
+## Section 2: Discriminant Analysis
+
+## NEED TO ASK JRDS ABOUT THIS, DOESN"T MAKE TOO MUCH OF A DIFFERENCE, BUT WE MIGHT WANT TO CONSIDER IT
+We saw we had some major outliers above, which will likely distrupt Discriminant Analysis going forward. I'm going to remove the large outliers from each principal component and then replot the boxplots to get a sense of the new outlier-excluded distributions.
+```{r}
+# PC1_outliers <- as.vector(which(PCA_Data$PC1 %in% as.vector(boxplot.stats(PCA_Data$PC1)$out)))
+# PC2_outliers <- as.vector(which(PCA_Data$PC2 %in% as.vector(boxplot.stats(PCA_Data$PC2)$out)))
+# PC3_outliers <- as.vector(which(PCA_Data$PC3 %in% as.vector(boxplot.stats(PCA_Data$PC3)$out)))
+# PC4_outliers <- as.vector(which(PCA_Data$PC4 %in% as.vector(boxplot.stats(PCA_Data$PC4)$out)))
+# PCA_Data <- PCA_Data[-c(PC1_outliers, PC2_outliers, PC3_outliers, PC4_outliers),]
+# data_transformed <- data_transformed[-c(PC1_outliers, PC2_outliers, PC3_outliers, PC4_outliers),]
+# working_data <- working_data[-c(PC1_outliers, PC2_outliers, PC3_outliers, PC4_outliers),]
+# Sectors <- Sectors[-c(PC1_outliers, PC2_outliers, PC3_outliers, PC4_outliers)]
 ```
 
 ```{r}
-PC1_outliers <- as.vector(which(PCA_Data$PC1 %in% as.vector(boxplot.stats(PCA_Data$PC1)$out)))
-PC2_outliers <- as.vector(which(PCA_Data$PC2 %in% as.vector(boxplot.stats(PCA_Data$PC2)$out)))
-PC3_outliers <- as.vector(which(PCA_Data$PC3 %in% as.vector(boxplot.stats(PCA_Data$PC3)$out)))
-PCA_Data <- PCA_Data[-c(PC1_outliers,PC2_outliers,PC3_outliers),]
-data_transformed <- data_transformed[-c(PC1_outliers,PC2_outliers,PC3_outliers),]
-Sectors <- Sectors[-c(PC1_outliers,PC2_outliers,PC3_outliers)]
+# par(mar=c(3,15,2,2))
+# boxplot(PC1 ~ Sectors, data=PCA_Data, horizontal = T, main="PC1 by Industry", las=2)
+# boxplot(PC2 ~ Sectors, data=PCA_Data, horizontal = T, main="PC2 by Industry", las=2)
+# boxplot(PC3 ~ Sectors, data=PCA_Data, horizontal = T, main="PC3 by Industry", las=2)
+# boxplot(PC4 ~ Sectors, data=PCA_Data, horizontal = T, main="PC4 by Industry", las=2)
 ```
-
-```{r}
-par(mar=c(2,15,2,2))
-boxplot(PC1 ~ Sectors, data=PCA_Data, horizontal = T, main="PC1 by Industry", las=2)
-boxplot(PC2 ~ Sectors, data=PCA_Data, horizontal = T, main="PC2 by Industry", las=2)
-boxplot(PC3 ~ Sectors, data=PCA_Data, horizontal = T, main="PC3 by Industry", las=2)
-```
-
+That looks a lot better.
 
 ```{r}
 for (name in unique(Sectors)){
   print(paste("Covariance Matrix for", name))
-  print(cov(PCA_Data[PCA_Data$Sector == name, 2:4]))
-  cat(c("log-determinant", log(det(cov(PCA_Data[PCA_Data$Sector == name, 2:4]))), "\n\n"))
+  print(cov(PCA_Data[PCA_Data$Sector == name, 2:5]))
+  cat(c("log-determinant", log(det(cov(PCA_Data[PCA_Data$Sector == name, 2:5]))), "\n\n"))
 }
 
-boxM(PCA_Data[,c("PC1","PC2","PC3")], PCA_Data$Sector)
+boxM(PCA_Data[,c("PC1","PC2","PC3","PC4")], PCA_Data$Sector)
 ```
 
 ```{r}
