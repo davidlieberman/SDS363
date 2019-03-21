@@ -1,6 +1,6 @@
 ---
 title: "PSet 4"
-author: "Yavuz Ramiz Çolak, Ryo Tamaki, David Lieberman, Liana Wang"
+author: "Yavuz Ramiz Çolak, Ryo Tamaki, Liana Wang, David Lieberman"
 date: "3/10/2019"
 output: html_document
 ---

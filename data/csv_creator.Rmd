@@ -91,14 +91,16 @@ data <- new_data[c(FALSE, TRUE),]
 data <- data[-107,]
 data_new <- read.csv("sp500-companylist.csv")[,c(1,3)]
 
-sector <- c()
+Sector <- c()
 for (i in 1:length(data$Ticker.Symbol)){
   index <- which(data_new[,1] == as.vector(data$Ticker.Symbol)[i])
-  sector[i] <- as.character(data_new[index,2])
+  Sector[i] <- as.character(data_new[index,2])
 }
 
-data <- cbind(sector, data)
+data <- cbind(Sector, data)
 data <- data[,c(2,1,4:30)]
+
+rownames(data) <- c()
 
 data
 
