@@ -15,9 +15,15 @@ library(cowplot)
 library(tidyr)
 library(MASS)
 library(car)
+library(class)
 library(corrplot)
 library(PerformanceAnalytics)
 library(biotools)
+library(DiscriMiner)
+library(klaR)
+library(ks)
+library(sparr)
+library(spatstat)
 library(mvtnorm)
 library(mvoutlier)
 library(ellipse)
@@ -108,7 +114,7 @@ remove <- c(as.vector(which(working_data$sector %in% c("Telecommunication Servic
             383,423,428)
 working_data <- working_data[-remove,]
 
-data_numeric <- working_data[,-c(1:2)]
+data_numeric <- working_data[,-c(1:2,22:23)]
 
 working_data
 ```
@@ -259,6 +265,15 @@ chart.Correlation(data_transformed, histogram=FALSE)
 ```
 
 ```{r}
+# variables <- data[-remove,]
+# variables <- variables[-outliers,]
+# 
+# for (i in names(variables)[3:96]){
+#   plot(variables[[i]], working_data$percent_change, xlab=i)
+# }
+```
+
+```{r}
 pc1 <- princomp(data_transformed, cor=TRUE)
 pc2 <- prcomp(data_transformed, scale=TRUE)
 ```
@@ -390,3 +405,77 @@ boxM(PCA_Data[,c("PC1","PC2","PC3","PC4")], PCA_Data$Returns)
 CSQPlot(PCA_Data[which(working_data$returns == "High"),][-c(1,2)], label="High")
 CSQPlot(PCA_Data[which(working_data$returns == "Low"),][-c(1,2)], label="Low")
 ```
+
+STEPWISE QDA
+```{r}
+correlations <- c(); j <- 1
+for (i in names(data_transformed)){
+  correlations[i] <- cor(working_data$percent_change, data_transformed[[i]])
+}
+names(data_transformed)[which.max(abs(correlations))] # roic
+
+data.QDA <- data_transformed # the data 
+group.QDA <- working_data$returns # the classes 
+
+# starting with roic because it has the highest pearson correlation with percent change
+
+stepwise.qda <- stepclass(data.QDA, group.QDA, "qda", start.vars = "roic")
+stepwise.qda
+plot(stepwise.qda)
+
+# LMAO THIS WAS GARBAGE
+```
+
+```{r}
+manova <- manova(as.matrix(data.QDA) ~ group.QDA)
+summary.aov(manova)
+```
+
+\\ NEED TO DISCUSS AS A GROUP WHAT THIS MEANS
+
+```{r}
+summary.manova(manova,test="Wilks")
+```
+
+QDA, no cross-validation
+```{r}
+QDA <- qda(data.QDA, group.QDA, CV=FALSE) 
+table(group.QDA, predict(QDA)$class)
+
+# yikes
+```
+
+QDA, with cross-validation
+```{r}
+cv.QDA <- qda(data.QDA, group.QDA, CV=TRUE) 
+table(group.QDA, cv.QDA$class)
+
+# big yikes
+```
+
+```{r}
+# partimat(as.factor(group.QDA)~assets+assetturnover+cashneq+ebit+ebitdamargin+ev_ebitda+equity+ev+gp+grossmargin+liabilities+netinc+netmargin+opinc+revenue+roa+roe+roic+ros, data=data.QDA, method="qda") 
+
+# GETTING ERRORS NEED TO ASK JDRS
+```
+
+
+Nonparametric k-nearest neighbor (leave-one-out)
+```{r}
+results <- matrix(nrow = 45, ncol = 20)
+for (j in 1:20) {
+  for (i in 1:45) {
+    test_point <- data.QDA[i,]
+    train_data <- data.QDA[-i,]
+    knn_prediction <- as.vector(knn(train = train_data, test = test_point, cl = group.QDA[-i], k = j))
+    truth <- as.vector(group.QDA[i])
+    results[i,j] <- truth == knn_prediction
+  }
+}
+
+best_k <- which.max(colMeans(results))
+best_k
+success_rate <- colMeans(results)[best_k]
+success_rate
+```
+Leaving out one point, and predicting its group using the k-nearest neighbor method, and repeating this for all 331 points in our dataset, this method predicts the group with an approximately 57.8% success rate.
