@@ -9,10 +9,12 @@ output: html_document
 knitr::opts_chunk$set(echo = FALSE)
 rm(list=ls())
 options(warn=-1)
+library(knitr)
 library(ggplot2)
 library(ggfortify)
 library(cowplot)
 library(tidyr)
+library(tidyverse)
 library(MASS)
 library(car)
 library(class)
@@ -21,14 +23,13 @@ library(PerformanceAnalytics)
 library(biotools)
 library(DiscriMiner)
 library(klaR)
-library(ks)
+library(e1071)
 library(sparr)
 library(spatstat)
 library(mvtnorm)
 library(mvoutlier)
 library(ellipse)
 library(data.table)
-library(knitr)
 library(kableExtra)
 library(Quandl)
 ```
@@ -454,7 +455,7 @@ table(group.QDA, cv.QDA$class)
 ```
 
 ```{r}
-# partimat(as.factor(group.QDA)~assets+assetturnover+cashneq+ebit+ebitdamargin+ev_ebitda+equity+ev+gp+grossmargin+liabilities+netinc+netmargin+opinc+revenue+roa+roe+roic+ros, data=data.QDA, method="qda") 
+# partimat(as.factor(group.QDA)~. , data=data.QDA, method="qda") 
 
 # GETTING ERRORS NEED TO ASK JDRS
 ```
@@ -479,3 +480,26 @@ success_rate <- colMeans(results)[best_k]
 success_rate
 ```
 Leaving out one point, and predicting its group using the k-nearest neighbor method, and repeating this for all 331 points in our dataset, this method predicts the group with an approximately 57.8% success rate.
+
+Support-Vector Machine, ML binary classification method
+```{r}
+svm_data <- data.frame(data_transformed, "returns" = as.factor(working_data$returns))
+
+percent_correct <- c()
+for (i in 1:30){
+  withold <- as.vector(sample.int(nrow(svm_data), 30))
+  train <- svm_data[-withold,]
+  test <- svm_data[withold,]
+  
+  tune.out <- tune(svm, returns~. , data=train, kernel = "radial", scale = TRUE,ranges = list(cost = c(0.1,1,10), gamma = c(0.5,1)))
+  bestmod <- tune.out$best.model
+  
+  predicted_returns.test <- predict(bestmod, test)
+  misclass.test <- table(predict = predicted_returns.test, truth = test$returns)
+  percent_correct[i] <- sum(misclass.test[c(1,4)])/30
+  print(i)
+}
+
+mean(percent_correct)
+```
+
