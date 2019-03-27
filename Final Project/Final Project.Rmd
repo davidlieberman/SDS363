@@ -93,7 +93,7 @@ data <- data[-missing,]
 price_dataframe <- price_dataframe[-missing,]
 
 percent_change <- (price_dataframe$price_2018 - price_dataframe$price_2017)/price_dataframe$price_2018
-returns <- ifelse(percent_change > -0.05402873512, "High", "Low")
+returns <- ifelse(percent_change > ((2506.85 - 2673.61)/2506.85), "High", "Low")
 price_dataframe <- cbind(price_dataframe, percent_change)
 price_dataframe <- cbind(price_dataframe, returns)
 setattr(price_dataframe, "row.names", as.vector(data$ticker))
