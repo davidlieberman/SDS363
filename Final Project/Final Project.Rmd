@@ -137,9 +137,9 @@ Our dataset follows S&P500 companies with 23 different variables quantifying the
 
 Our dataset has:
 
---Categorical Variables (): Ticker Symbol, Sector, Returns
+--Categorical Variables (3): 'Ticker Symbol,' 'S&P500 Sector,' and 'Returns' (did the stock price percent change outperform the S&P500 percent change within the same timeframe?)
 
---Continuous Variables (): 
+--Continuous Variables (20): 'Assets,' 'Asset Turnover,' 'Cash and Equivalents,' 'Earning Before Interest & Taxes,' 'Earnings Before Interest, Taxes & Depreciation Amortization Margin,' 'Enterprise Value vs Earnings Before Interest, Taxes & Depreciation Amortization,' 'Equity,' 'Gross Profit,' 'Gross Margin,' 'Liabilities,' 'Net Income,' 'Profit Margin,' 'Operating Income,' 'Revenue,' 'Return on Average Assets,' 'Return on Average Equity,' 'Return on Invested Capital,' 'Return on Sales,' 'Percent Change in Stock Price between 12/31/17 and 12/31/18' 
 
 ```{r}
 QQPlot <- function(x, na.rm = TRUE){
@@ -294,20 +294,20 @@ The table above shows that if we want to account for at least 50% of the varianc
 
 ### ECON KNOWLEDGE PLEASE
 
---First Principal Component Major Contributors: 
+--First Principal Component Major Contributors: Assets (0.3302195), Ebit (0.3427073), Equity (0.3113194), Ev (0.3096712), Gp (0.3344644), Liabilities (0.3175236), Netinc (0.3004678), Opinc (0.3393669), Revenue (0.3063073)
 
 *It seems that all of these variables deal with ...* 
 
 
---Second Principal Component Major Contributors: 
+--Second Principal Component Major Contributors: Assetturnover (-0.4576183), Ebitdamargin (0.4143826), Grossmargin (0.3299659), Netmargin (0.3255007), Ros (0.3877188)
 
 *It seems that all of these variables deal with ...* 
 
---Third Principal Component Major Contributors:
+--Third Principal Component Major Contributors: Netmargin (-0.3604086), Roa (-0.4972653), Roe (-0.4591578), Roic (-0.3446799)
 
 *It seems that all of these variables deal with ...* 
 
---Fourth Principal Component Major Contributors:
+--Fourth Principal Component Major Contributors: Cashneq (-0.3541464), Ev_ebitda (-0.6414379), Grossmargin (-0.3866646), Roic (-0.3104997)
 
 *It seems that all of these variables deal with ...* 
 
@@ -315,10 +315,7 @@ The table above shows that if we want to account for at least 50% of the varianc
 ```{r}
 screeplot(pc2,type="lines",col="red",lwd=2,pch=19,cex=1.2,main="Scree Plot")
 ```
-
-\\ WILL BE ADDING MORE ANALYSIS
-
-As we can see from the scree plot above, successive components beyond the fourth principal component do little to explain the remaining variance of our data. It's hard to see exactly where to "cut above the first elbow" since the Scree plot seems relatively "smooth", however, in general, it seems to validate our decision to keep the first four principal components.
+As we can see from the scree plot above, successive components beyond the fourth principal component do little to explain the remaining variance of our data. It's hard to see exactly where to "cut above the first elbow" since the Scree plot seems relatively "smooth", however, in general, it seems to corroborate our previous decision to keep the first four principal components.
 
 ```{r}
 ciscoreplot<-function(x,comps,namevec){
@@ -443,7 +440,7 @@ QDA, no cross-validation
 QDA <- qda(data.QDA, group.QDA, CV=FALSE) 
 table(group.QDA, predict(QDA)$class)
 
-# yikes
+# 72.5% correct
 ```
 
 QDA, with cross-validation
@@ -451,7 +448,7 @@ QDA, with cross-validation
 cv.QDA <- qda(data.QDA, group.QDA, CV=TRUE) 
 table(group.QDA, cv.QDA$class)
 
-# big yikes
+# ~62.2% correct
 ```
 
 ```{r}
@@ -481,25 +478,32 @@ success_rate
 ```
 Leaving out one point, and predicting its group using the k-nearest neighbor method, and repeating this for all 331 points in our dataset, this method predicts the group with an approximately 57.8% success rate.
 
-Support-Vector Machine, ML binary classification method
+Support-Vector Machine, ML binary classification method, with k-fold (30) cross-validation
 ```{r}
 svm_data <- data.frame(data_transformed, "returns" = as.factor(working_data$returns))
 
-percent_correct <- c()
-for (i in 1:30){
-  withold <- as.vector(sample.int(nrow(svm_data), 30))
-  train <- svm_data[-withold,]
-  test <- svm_data[withold,]
-  
-  tune.out <- tune(svm, returns~. , data=train, kernel = "radial", scale = TRUE,ranges = list(cost = c(0.1,1,10), gamma = c(0.5,1)))
-  bestmod <- tune.out$best.model
-  
-  predicted_returns.test <- predict(bestmod, test)
-  misclass.test <- table(predict = predicted_returns.test, truth = test$returns)
-  percent_correct[i] <- sum(misclass.test[c(1,4)])/30
-  print(i)
-}
+# percent_correct <- c()
+# for (i in 1:30){
+#   withold <- as.vector(sample.int(nrow(svm_data), 30))
+#   train <- svm_data[-withold,]
+#   test <- svm_data[withold,]
+#   
+#   tune.out <- tune(svm, returns~. , data=train, kernel = "radial", scale = TRUE,ranges = list(cost = c(0.1,1,10), gamma = c(0.5,1)))
+#   bestmod <- tune.out$best.model
+#   
+#   predicted_returns.test <- predict(bestmod, test)
+#   misclass.test <- table(predict = predicted_returns.test, truth = test$returns)
+#   percent_correct[i] <- sum(misclass.test[c(1,4)])/30
+#   print(i)
+# }
+# 
+# mean(percent_correct)
 
-mean(percent_correct)
+tune.out <- tune(svm, returns~. , data=svm_data, kernel = "radial", cross = 30, scale = TRUE, ranges = list(cost = c(0.1,1,10), gamma = c(0.5,1,2)))
+bestmod <- tune.out$best.model
+
+bestmod$accuracies
+cat("\n")
+bestmod$tot.accuracy
 ```
 
