@@ -1,0 +1,45 @@
+---
+title: 'Data'
+author: "David Lieberman, Yavuz Ramiz Çolak, Ryo Tamaki, Liana Wang"
+date: "March 10th, 2019"
+output: html_document
+---
+
+```{r setup}
+library(Quandl)
+library(data.table)
+library(car)
+```
+
+```{r}
+Quandl.api_key("LQ8syJ41h-Ar9UMq2M-N")
+sp500 <- read.csv("sectors.csv")
+companies <- as.vector(as.character(sp500$Ticker))
+sector <- as.vector(as.character(sp500$Sector))
+data1 <- Quandl.datatable("SHARADAR/SF1",  ticker=companies[1:474], calendardate="2018-12-31")
+data2 <- Quandl.datatable("SHARADAR/SF1",  ticker=companies[475:506], calendardate="2018-12-31")
+data <- rbind(data1, data2)
+data <- data[order(data$ticker),]
+
+
+sector <- sector[companies %in% data$ticker]
+data <- cbind(sector, data)
+data <- data[,c(2,1,8:112)]
+data <- data[ , apply(data, 2, function(x) !any(is.na(x)))]
+
+working_data <- data[,c(1:2,4,7:8,13,16,25,30,31,33,37:39,49,54:56,61,63,65)]
+data_numeric <- working_data[,-c(1:2)]
+
+# sink("indicators.txt")
+# for (i in names(data)){
+#   cat(i)
+#   cat("\n")
+# }
+# sink()
+
+# data_numeric <- data[,-c(1,2)]
+# 
+# for (i in names(data_numeric)){
+#   qqPlot(data_numeric[[i]], main=i)
+# }
+```

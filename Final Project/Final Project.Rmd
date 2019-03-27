@@ -1,7 +1,7 @@
 ---
 title: 'S&DS363 Final Project'
 author: "Yavuz Ramiz Çolak, Ryo Tamaki, Liana Wang, David Lieberman"
-date: "March 10th, 2019"
+date: "March 27th, 2019"
 output: html_document
 ---
 
@@ -14,34 +14,114 @@ library(ggfortify)
 library(cowplot)
 library(tidyr)
 library(MASS)
+library(car)
 library(corrplot)
+library(PerformanceAnalytics)
+library(biotools)
 library(mvtnorm)
+library(mvoutlier)
 library(ellipse)
 library(data.table)
 library(knitr)
 library(kableExtra)
-library(biotools)
-library(DiscriMiner)
-library(klaR)
+library(Quandl)
 ```
 
-```{r, include=FALSE}
-data <- read.csv("https://pastebin.com/raw/Xzp5dCLG")
-working_data <- data
-working_data <- data[- as.vector(which(data$Sector %in% c("Financials", "Telecommunications Services"))),]
-working_data <- working_data[,-c(3,5,9,11,15,19,20,22)]
-setattr(working_data, "row.names", as.vector(working_data$Ticker.Symbol))
-data_numeric <- working_data[,-c(1,2,21)]
+DATA COLLECTION
+```{r}
+Quandl.api_key("LQ8syJ41h-Ar9UMq2M-N")
+sp500 <- read.csv("https://pastebin.com/raw/ScRKxckW")
+companies <- as.vector(as.character(sp500$Ticker))
+sector <- as.vector(as.character(sp500$Sector))
+data1 <- Quandl.datatable("SHARADAR/SF1",  ticker=companies[1:252], calendardate="2017-12-31")
+data2 <- Quandl.datatable("SHARADAR/SF1",  ticker=companies[253:505], calendardate="2017-12-31")
+data <- rbind(data1, data2)
+data <- data[order(data$ticker),]
+
+sector <- sector[companies %in% data$ticker]
+data <- cbind(sector, data)
+data <- data[,c(2,1,8:112)]
+data <- data[ , apply(data, 2, function(x) !(length(which(is.na(x))) > 15))]
+data <- na.omit(data)
+
+# sink("outfile.txt")
+# for (i in names(data)){
+#   cat(i)
+#   cat("\n")
+# }
+# sink()
 ```
+
+```{r}
+price_2018_1 <- Quandl.datatable("SHARADAR/SF1",  ticker=companies[1:252], calendardate="2018-12-31", qopts.columns=c("ticker", "price"))
+price_2018_1 <- price_2018_1[order(price_2018_1$ticker),]
+price_2018_2 <- Quandl.datatable("SHARADAR/SF1",  ticker=companies[253:505], calendardate="2018-12-31", qopts.columns=c("ticker", "price"))
+price_2018_2 <- price_2018_2[order(price_2018_2$ticker),]
+price_2018 <- rbind(price_2018_1, price_2018_2)
+
+
+price_dataframe <- data.frame("ticker" = data$ticker, "price_2017" = data$price, "price_2018" = rep(NA, nrow(data)))
+for (i in 1:nrow(data)){
+  if (data$ticker[i] %in% price_2018$ticker){
+      position_2018 <- which(price_2018$ticker == data$ticker[i])
+      price_dataframe$price_2018[i] <- price_2018$price[position_2018]
+  }
+  else{
+    price_dataframe$price_2018[i] <- NA
+  }
+}
+
+missing <- as.vector(which(is.na(price_dataframe$price_2018)))
+missing_ticker <- data$ticker[missing]
+missing_prices <- c(NA, NA, 52.96, NA, 90.32, NA, NA, 53.20, NA, 171.82, 43.04, 92.36, 29.78, NA, NA, 92.95, NA, 83.20, NA, 44.74, NA, 244.84, 71.34, 93.15, NA)
+
+j <- 1
+for (i in missing){
+  price_dataframe$price_2018[i] <- missing_prices[j]
+  j <- j + 1
+}
+
+missing <- as.vector(which(is.na(price_dataframe$price_2018)))
+
+data <- data[-missing,]
+price_dataframe <- price_dataframe[-missing,]
+
+percent_change <- (price_dataframe$price_2018 - price_dataframe$price_2017)/price_dataframe$price_2018
+returns <- ifelse(percent_change > -0.05402873512, "High", "Low")
+price_dataframe <- cbind(price_dataframe, percent_change)
+price_dataframe <- cbind(price_dataframe, returns)
+setattr(price_dataframe, "row.names", as.vector(data$ticker))
+
+price_dataframe
+```
+
+```{r}
+working_data <- data[,c(1:2,4,6,9,21,23,30,33,39:40,47,59,64,66,79,82:85)]
+ev_ebitda <- data$ev / data$ebitda
+working_data <- data.frame(working_data, ev_ebitda, "percent_change" = price_dataframe$percent_change, "returns" = price_dataframe$returns)
+setattr(working_data, "row.names", as.vector(working_data$ticker))
+working_data <- working_data[,c(1:7,21,8:20,22:23)]
+
+remove <- c(as.vector(which(working_data$sector %in% c("Telecommunication Services"))),
+            as.vector(which(working_data$ebitda <= 0 )),
+            as.vector(which(working_data$ev_ebitda <= 0 )),
+            383,423,428)
+working_data <- working_data[-remove,]
+
+data_numeric <- working_data[,-c(1:2)]
+
+working_data
+```
+
 
 ## Introduction, Design and Primary Questions
 
 ### PLEASE EDIT MY WRITING HERE -- ADD TO THE INTRO, MY KNOWLEDGE OF ECON IS LIMITED
-Our dataset follows 216 stocks on New York Stock Exchange with 21 different variables quantifying their performance on the S&P 500 between the market open on 2015-01-01 and the market close on 2015-12-31 (obtained from Kaggle). Each row contains the metrics for a given a company, with column metrics ranging from Earnings and Total Costs, to Profit Marging and Price/Earnings ratio. **This report intends to identify various paterns within the data:** In particular, we will use the following statistical techniques:
+Our dataset follows S&P500 companies with 23 different variables quantifying their performance on the New York Stock Exchange as of 2017-12-31 (obtained via the Quandl API). Each row is a given a company, with column metrics ranging from Gross Profit and ROE, to Assets and Liabilities. **This report intends to identify various paterns within the data to predict {...}** In particular, we will use the following statistical techniques:
 
---Which performance metrics tend to vary greatly between stocks? Principal Component Analysis will yield a few uncorrelated principal components in the directions of greatest variance. This will allow us to see which performance metrics tend to correlate with one another (their weights within principal components), and reduce the dimensionality and correlation overall to a few "super variables" to be used in later analysis.
+--Which performance metrics tend to vary greatly between stocks? Principal Component Analysis will yield a few uncorrelated principal components in the directions of greatest variance. This will allow us to see which performance metrics tend to correlate with one another (their weights within principal components), and reduce the overall dimensionality and effectively eliminate any correlation between variables to avoid any bias that would be introduced by multicollinearity.
 
---Are there particular performance metrics that can be used to decern which Sector a stock belongs to? Discriminant Analysis will allow us to identify which principal components are best for discriminating between Sectors (ie. Do stocks in the Energy Sector normally have greater Total Assets than other Sectors), and create discriminator functions that can predict the Sector classification of an unknown stock given its performance metrics.
+--Are there particular performance metrics that can be used to decern which Sector a stock belongs to? Discriminant Analysis will allow us to see which principal components (and by extension the performance metrics contained in their loading coefficients) are most important for discriminanting between companies that did or did not outperform the SP500 during that same timeframe.
 
 --THIRD THING
 
@@ -50,11 +130,9 @@ Our dataset follows 216 stocks on New York Stock Exchange with 21 different vari
 
 Our dataset has:
 
---Categorical Variables (3): Ticker Symbol, Sector, Returns
+--Categorical Variables (): Ticker Symbol, Sector, Returns
 
---Discrete Variables (2): Current Ratio, Quick Ratio
-
---Continuous Variables (16): Capital Expenditures, Cash and Cash Equivalents, Depreciation, Gross Profit, Investments, Liabilities, Long Term Debt, Net Cash Flow, Net Income, Operating Income, Total Assets, Total Equity, Total Liabilities, Earnings Per Share, Estimated Shares Outstanding, Wide Percent Change
+--Continuous Variables (): 
 
 ```{r}
 QQPlot <- function(x, na.rm = TRUE){
@@ -66,43 +144,49 @@ QQPlot <- function(x, na.rm = TRUE){
   }
   print(plot_grid(plotlist = plots[1:9]))
   print(plot_grid(plotlist = plots[10:18]))
+  print(plot_grid(plotlist = plots[19:27]))
 }
 ```
 
+
 First, let's take a look at the data and make quantile-quantile plots for each performance metric to see if each variable is approximately univariate Normal.
 ```{r}
-kable(working_data[1:10,]) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed"), font_size = 5)
+kable(working_data[1:10,]) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed"), font_size = 6)
 QQPlot(data_numeric)
 ```
 
-Several of these variables seem to deviate substantially from univariate Normality. Applying a log transformation will likely help. There are several subtleties. Many variables take on negative values, so to remedy this, I will first shift the data by the magnitude of the smallest value + 1 before taking its log. However, this addition disrupts ratio quantities. Thus, in the case of Earnings Per Share which contained negative values, we first take the absolute value, then apply the log transformation. Wide Percent Change already seemed approximately univariate Normal (approximately a straight line quantile-quantile plot), so it was not transformed.
+Several of these variables seem to deviate substantially from univariate Normality. Applying a log transformation will likely help. There are several subtleties. Many variables take on negative values, so to remedy this, I will first shift the data by the magnitude of the smallest value + 1 before taking its log. However, this addition disrupts ratio quantities, which, although it might be helpful to transform, by in large they seem approximately Normal enough that we will leave them unchanged.
 
-### ASK JRDS ABOUT THESE TRANSFORMATIONS
-```{r, echo = TRUE}
+### ASK JDRS ABOUT THESE TRANSFORMATIONS
+```{r, echo = TRUE, warning=FALSE}
 data_transformed <- data_numeric
 
-data_transformed$Capital.Expenditures <- log(data_transformed$Capital.Expenditures + abs(min(data_transformed$Capital.Expenditures)) + 1)
-data_transformed$Cash.and.Cash.Equivalents <- log(data_transformed$Cash.and.Cash.Equivalents)
-data_transformed$Current.Ratio <- log(data_transformed$Current.Ratio)
-data_transformed$Depreciation <- log(data_transformed$Depreciation + abs(min(data_transformed$Depreciation)) + 1)
-data_transformed$Gross.Profit <- log(data_transformed$Gross.Profit + abs(min(data_transformed$Gross.Profit)) + 1)
-data_transformed$Investments <- log(data_transformed$Investments + abs(min(data_transformed$Investments)) + 1)
-data_transformed$Liabilities <- log(data_transformed$Liabilities + abs(min(data_transformed$Liabilities)) + 1)
-data_transformed$Long.Term.Debt <- log(data_transformed$Long.Term.Debt + abs(min(data_transformed$Long.Term.Debt)) + 1)
-data_transformed$Net.Cash.Flow <- log(data_transformed$Net.Cash.Flow + abs(min(data_transformed$Net.Cash.Flow)) + 1)
-data_transformed$Net.Income <- log(data_transformed$Net.Income + abs(min(data_transformed$Net.Income)) + 1)
-data_transformed$Operating.Income <- log(data_transformed$Operating.Income + abs(min(data_transformed$Operating.Income)) + 1)
-data_transformed$Quick.Ratio <- log(data_transformed$Quick.Ratio)
-data_transformed$Total.Assets <- log(data_transformed$Total.Assets)
-data_transformed$Total.Equity <- log(data_transformed$Total.Equity + abs(min(data_transformed$Total.Equity)) + 1)
-data_transformed$Total.Liabilities <- log(data_transformed$Total.Liabilities + abs(min(data_transformed$Total.Liabilities)) + 1)
-data_transformed$Earnings.Per.Share <- log(abs(data_transformed$Earnings.Per.Share))
-colnames(data_transformed)[colnames(data_transformed)=="Earnings.Per.Share"] <- "Abs.Earnings.Per.Share"
-data_transformed$Estimated.Shares.Outstanding <- log(data_transformed$Estimated.Shares.Outstanding)
-data_transformed$wide.percent_change <- data_transformed$wide.percent_change
+data_transformed$assets <- log(data_transformed$assets)
+data_transformed$assetturnover <- log(data_transformed$assetturnover)
+data_transformed$cashneq <- log(data_transformed$cashneq + 1)
+data_transformed$ebit <- log(data_transformed$ebit + abs(min(data_transformed$ebit)) + 1)
+data_transformed$ev <- log(data_transformed$ev)
+data_transformed$ev_ebitda <- log(data_transformed$ev_ebitda)
+data_transformed$equity <- log(data_transformed$equity + abs(min(data_transformed$equity)) + 1)
+data_transformed$gp <- log(data_transformed$gp + abs(min(data_transformed$gp)) + 1)
+data_transformed$liabilities <- log(data_transformed$liabilities + abs(min(data_transformed$liabilities)) + 1)
+data_transformed$netinc <- log(data_transformed$netinc + abs(min(data_transformed$netinc)) + 1)
+data_transformed$opinc <- log(data_transformed$opinc + abs(min(data_transformed$opinc)) + 1)
+data_transformed$revenue <- log(data_transformed$revenue)
+
+which(is.infinite(as.matrix(data_transformed)) == TRUE)
+which(is.na(as.matrix(data_transformed)) == TRUE)
 
 data_transformed <- as.data.frame(data_transformed)
+
+outliers <- as.vector(which(pcout(data_transformed, makeplot = FALSE)$wfinal01 == 0))
+working_data <- working_data[-outliers,]
+data_numeric <- data_numeric[-outliers,]
+data_transformed <- data_transformed[-outliers,]
+
+data_transformed
 ```
+
 
 
 ```{r}
@@ -149,7 +233,7 @@ As we can see, our data is very far from multivariate Normal -- nearly all of th
 Let's construct a correlation matrix for our data. Hopefully, some variables will be highly correlated so our data will be a good match for Principal Component Analysis.
 ```{r}
 correlation_matrix <- setattr(as.data.frame(round(cor(data_transformed), 2)), "row.names", names(data_transformed))
-kable(correlation_matrix) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+kable(correlation_matrix) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), font_size = 8)
 ```
 
 
@@ -167,11 +251,11 @@ Nice, we have some highly correlated variables. PCA will work well for our data.
 
 Here's a more graphical representation of the correlation matrix that was created above.
 ```{r}
-correlation_plot <- cor(data_transformed)
-for (i in 1:ncol(correlation_plot)){
-  correlation_plot[i,i] <- 0
-}
-corrplot(correlation_plot, method = "color", tl.cex=0.6)
+corrplot(cor(data_transformed), method = "color", order="AOE", tl.cex=0.6)
+```
+
+```{r}
+chart.Correlation(data_transformed, histogram=FALSE)
 ```
 
 ```{r}
@@ -181,37 +265,44 @@ pc2 <- prcomp(data_transformed, scale=TRUE)
 
 ```{r}
 print(summary(pc2),digits=2)
+```
+
+According to the "eigenvalues greater than 1" rule, we will be keeping the first four principal components.
+
+```{r}
 loadings <- as.data.frame(pc1$loadings[,1:4])
 kable(loadings) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
 ```
 
 The table above shows that if we want to account for at least 50% of the variance across our data, we should keep the first four principal components, which explain 51.8% of the variance total. Looking at the loading coefficients for the first four principal components ("major contributor":= abs(loading coefficient) > 0.3)
 
-## ECON KNOWLEDGE PLEASE
+### ECON KNOWLEDGE PLEASE
 
---First Principal Component Major Contributors: Total.Liabilities (-0.491); Total.Assets (-0.487); Estimated.Shares.Outstanding (-0.401); Long.Term.Debt (-0.304)
-
-*It seems that all of these variables deal with ...* 
-
-
---Second Principal Component Major Contributors: Quick.Ratio (-0.520); Current.Ratio (-0.517); Cash.and.Cash.Equivalents (-0.382); Operating.Income (0.360); Net.Income (0.358)
+--First Principal Component Major Contributors: 
 
 *It seems that all of these variables deal with ...* 
 
---Third Principal Component Major Contributors: Net.Income (-0.556); Operating.Income (-0.556)
+
+--Second Principal Component Major Contributors: 
 
 *It seems that all of these variables deal with ...* 
 
---Fourth Principal Component Major Contributors: Wide.Percent_Change (0.618); Gross.Profit (0.443); Net.Cash.Flow (0.367); Total.Equity (-0.327)
+--Third Principal Component Major Contributors:
+
+*It seems that all of these variables deal with ...* 
+
+--Fourth Principal Component Major Contributors:
 
 *It seems that all of these variables deal with ...* 
 
 
 ```{r}
-screeplot(pc2,type="lines",col="red",lwd=2,pch=19,cex=1.2,main="Scree Plot of Raw Drug Data")
+screeplot(pc2,type="lines",col="red",lwd=2,pch=19,cex=1.2,main="Scree Plot")
 ```
 
-As we can see from the scree plot above, successive components beyond the fourth principal component do little to explain the remaining variance of our data. According to the cut above the first "elbow" philosophy, we would only keep the first principal component. However, our priority is explaining at least 50% of the variance of these data, so we continue with our decision to retain the first four principal components.
+\\ WILL BE ADDING MORE ANALYSIS
+
+As we can see from the scree plot above, successive components beyond the fourth principal component do little to explain the remaining variance of our data. It's hard to see exactly where to "cut above the first elbow" since the Scree plot seems relatively "smooth", however, in general, it seems to validate our decision to keep the first four principal components.
 
 ```{r}
 ciscoreplot<-function(x,comps,namevec){
@@ -236,40 +327,35 @@ ciscoreplot<-function(x,comps,namevec){
 ```
 
 
-## GETTING SOME ERRORS HERE
 ```{r}
 ciscoreplot(pc1,c(1,2), names(working_data))
 ciscoreplot(pc1,c(1,3), names(working_data))
 ciscoreplot(pc1,c(1,4), names(working_data))
 ```
 
-## NEED MORE ANALYSIS HERE
-
-Visualizing the score plot with a 95% confidence interval ellipse, there are some clear outliers. Let's take a look at the biplots.
+\\ NEED MORE ANALYSIS HERE
 
 ```{r}
 biplot(pc2,choices=c(1,2),pc.biplot=T)
 biplot(pc2,choices=c(1,3),pc.biplot=T)
 biplot(pc2,choices=c(1,4),pc.biplot=T)
+
+autoplot(pc2, x=1, y=2)
+autoplot(pc2, x=1, y=3)
+autoplot(pc2, x=1, y=4)
 ```
 
-The biplots corroborate what was seen in the loading coefficients table. The variables we identified as "major contibutors" for each principal component have large magnitude arrows pointing roughly along the axis of the respective principal components they are associated with. Additionally, we can see the ticker symbols of some major outliers that stray far from the tight clusters along certain principal component axes. 'APA' in PC2 and PC3; and 'PM,' 'XOM,' 'APC,' and 'FCX' in PC4.
+```{r}
+PCA_Data <- pc2$x[,c(1:4)]
+Sectors <- working_data$sector
+Returns <- working_data$returns
 
+PCA_Data <- data.frame(Returns, Sectors, PCA_Data)
 
+PCA_Data
+```
 
 Let's take a look at boxplots of each stock's principal component values, grouped by industry.
-
-## SOMETHING WEIRD, NOT SEEING APA WITH A REALLY LOW PC2 SCORE AS SEEN IN THE BIPLOT
-```{r}
-varimax4 <- varimax(pc2$rotation[,1:4])
-PCA_Data <- scale(as.matrix(data_transformed)) %*% varimax4$loadings
-PCA_Data <- as.data.frame(PCA_Data)
-
-Sectors <- as.vector(working_data$Sector)
-
-PCA_Data <- cbind(Sectors, PCA_Data)
-```
-
 ```{r}
 par(mar=c(3,15,2,2))
 boxplot(PC1 ~ Sectors, data=PCA_Data, horizontal = T, main="PC1 by Industry", las=2)
@@ -280,40 +366,27 @@ boxplot(PC4 ~ Sectors, data=PCA_Data, horizontal = T, main="PC4 by Industry", la
 
 ## Section 2: Discriminant Analysis
 
-## NEED TO ASK JRDS ABOUT THIS, DOESN"T MAKE TOO MUCH OF A DIFFERENCE, BUT WE MIGHT WANT TO CONSIDER IT
-We saw we had some major outliers above, which will likely distrupt Discriminant Analysis going forward. I'm going to remove the large outliers from each principal component and then replot the boxplots to get a sense of the new outlier-excluded distributions.
+Let's take a look at boxplots of each stock's principal component values, grouped by returns. "High" means the percent change of the stock price was more positive than the percent change of the SP500 between December 31st, 2017 and December 31st, 2018. "Low" means the opposite.
 ```{r}
-# PC1_outliers <- as.vector(which(PCA_Data$PC1 %in% as.vector(boxplot.stats(PCA_Data$PC1)$out)))
-# PC2_outliers <- as.vector(which(PCA_Data$PC2 %in% as.vector(boxplot.stats(PCA_Data$PC2)$out)))
-# PC3_outliers <- as.vector(which(PCA_Data$PC3 %in% as.vector(boxplot.stats(PCA_Data$PC3)$out)))
-# PC4_outliers <- as.vector(which(PCA_Data$PC4 %in% as.vector(boxplot.stats(PCA_Data$PC4)$out)))
-# PCA_Data <- PCA_Data[-c(PC1_outliers, PC2_outliers, PC3_outliers, PC4_outliers),]
-# data_transformed <- data_transformed[-c(PC1_outliers, PC2_outliers, PC3_outliers, PC4_outliers),]
-# working_data <- working_data[-c(PC1_outliers, PC2_outliers, PC3_outliers, PC4_outliers),]
-# Sectors <- Sectors[-c(PC1_outliers, PC2_outliers, PC3_outliers, PC4_outliers)]
+boxplot(PC1 ~ Returns, data=PCA_Data, horizontal = T, main="PC1 by Returns", las=2)
+boxplot(PC2 ~ Returns, data=PCA_Data, horizontal = T, main="PC2 by Returns", las=2)
+boxplot(PC3 ~ Returns, data=PCA_Data, horizontal = T, main="PC3 by Returns", las=2)
+boxplot(PC4 ~ Returns, data=PCA_Data, horizontal = T, main="PC4 by Returns", las=2)
+```
+
+```{r, echo = TRUE}
+print("Covariance Matrix for High")
+cov(PCA_Data[PCA_Data$Returns == "High", 3:6])
+cat(c("log-determinant", log(det(cov(PCA_Data[PCA_Data$Returns == "High", 3:6]))), "\n\n"))
+
+print("Covariance Matrix for Low")
+cov(PCA_Data[PCA_Data$Returns == "Low", 3:6])
+cat(c("log-determinant", log(det(cov(PCA_Data[PCA_Data$Returns == "Low", 3:6]))), "\n\n"))
+
+boxM(PCA_Data[,c("PC1","PC2","PC3","PC4")], PCA_Data$Returns)
 ```
 
 ```{r}
-# par(mar=c(3,15,2,2))
-# boxplot(PC1 ~ Sectors, data=PCA_Data, horizontal = T, main="PC1 by Industry", las=2)
-# boxplot(PC2 ~ Sectors, data=PCA_Data, horizontal = T, main="PC2 by Industry", las=2)
-# boxplot(PC3 ~ Sectors, data=PCA_Data, horizontal = T, main="PC3 by Industry", las=2)
-# boxplot(PC4 ~ Sectors, data=PCA_Data, horizontal = T, main="PC4 by Industry", las=2)
-```
-That looks a lot better.
-
-```{r}
-for (name in unique(Sectors)){
-  print(paste("Covariance Matrix for", name))
-  print(cov(PCA_Data[PCA_Data$Sector == name, 2:5]))
-  cat(c("log-determinant", log(det(cov(PCA_Data[PCA_Data$Sector == name, 2:5]))), "\n\n"))
-}
-
-boxM(PCA_Data[,c("PC1","PC2","PC3","PC4")], PCA_Data$Sector)
-```
-
-```{r}
-for (name in unique(Sectors)){
-  CSQPlot(PCA_Data[which(Sectors==name),][-1], label=name)
-}
+CSQPlot(PCA_Data[which(working_data$returns == "High"),][-c(1,2)], label="High")
+CSQPlot(PCA_Data[which(working_data$returns == "Low"),][-c(1,2)], label="Low")
 ```
