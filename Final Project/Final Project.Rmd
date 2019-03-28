@@ -290,7 +290,7 @@ loadings <- as.data.frame(pc1$loadings[,1:4])
 kable(loadings) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
 ```
 
-The table above shows that if we want to account for at least 50% of the variance across our data, we should keep the first four principal components, which explain 51.8% of the variance total. Looking at the loading coefficients for the first four principal components ("major contributor":= abs(loading coefficient) > 0.3)
+Looking at the loading coefficients for the first four principal components ("major contributor":= abs(loading coefficient) > 0.3):
 
 ### ECON KNOWLEDGE PLEASE
 
@@ -315,7 +315,7 @@ The table above shows that if we want to account for at least 50% of the varianc
 ```{r}
 screeplot(pc2,type="lines",col="red",lwd=2,pch=19,cex=1.2,main="Scree Plot")
 ```
-As we can see from the scree plot above, successive components beyond the fourth principal component do little to explain the remaining variance of our data. It's hard to see exactly where to "cut above the first elbow" since the Scree plot seems relatively "smooth", however, in general, it seems to corroborate our previous decision to keep the first four principal components.
+As we can see from the scree plot above, successive components beyond the fourth principal component do little to explain the remaining variance of our data. It's hard to see exactly where to "cut above the first elbow" since the Scree plot seems relatively "smooth." However, in general, it seems to corroborate our previous decision to keep the first four principal components.
 
 ```{r}
 ciscoreplot<-function(x,comps,namevec){
@@ -476,7 +476,7 @@ best_k
 success_rate <- colMeans(results)[best_k]
 success_rate
 ```
-Leaving out one point, and predicting its group using the k-nearest neighbor method, and repeating this for all 331 points in our dataset, this method predicts the group with an approximately 57.8% success rate.
+Leaving out one point, and predicting its group using the k-nearest neighbor method, and repeating this for all 331 points in our dataset, this method predicts the group with approximately 57.8% success rate.
 
 Support-Vector Machine, ML binary classification method, with k-fold (30) cross-validation
 ```{r}
