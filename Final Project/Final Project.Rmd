@@ -94,7 +94,23 @@ data <- data[-missing,]
 price_dataframe <- price_dataframe[-missing,]
 
 percent_change <- (price_dataframe$price_2018 - price_dataframe$price_2017)/price_dataframe$price_2018
-returns <- ifelse(percent_change > ((2506.85 - 2673.61)/2506.85), "High", "Low")
+sp500_percent <- (2506.85 - 2673.61)/2506.85
+lower_percent_bound <- sp500_percent + 1.5*sp500_percent
+upper_percent_bound <- sp500_percent - 1.5*sp500_percent
+
+returns <- c()
+for (i in 1:length(percent_change)){
+  if (between(percent_change[i], lower_percent_bound, upper_percent_bound, incbounds=TRUE)){
+    returns[i] <- "Mediocre"
+  }
+  else if (percent_change[i] > upper_percent_bound){
+    returns[i] <- "High"
+  }
+  else{
+    returns[i] <- "Low"
+  }
+}
+
 price_dataframe <- cbind(price_dataframe, percent_change)
 price_dataframe <- cbind(price_dataframe, returns)
 setattr(price_dataframe, "row.names", as.vector(data$ticker))
@@ -103,28 +119,27 @@ price_dataframe
 ```
 
 ```{r}
-working_data <- data[,c(1:2,4,6,9,21,23,30,33,39:40,47,59,64,66,79,82:85)]
+equity_assets <- data$equity / data$assets
+cashneq_liabilities <- data$cashneq / data$liabilities
+ebit_ev <- data$ebit / data$ev
 ev_ebitda <- data$ev / data$ebitda
-working_data <- data.frame(working_data, ev_ebitda, "percent_change" = price_dataframe$percent_change, "returns" = price_dataframe$returns)
-setattr(working_data, "row.names", as.vector(working_data$ticker))
-working_data <- working_data[,c(1:7,21,8:20,22:23)]
 
-remove <- c(as.vector(which(working_data$sector %in% c("Telecommunication Services"))),
-            as.vector(which(working_data$ebitda <= 0 )),
-            as.vector(which(working_data$ev_ebitda <= 0 )),
-            383,423,428)
+working_data <- data.frame("ticker"=data$ticker, "sector"=data$sector, cashneq_liabilities, equity_assets, ebit_ev, ev_ebitda, "ebitdamargin"=data$ebitdamargin, "grossmargin"=data$grossmargin, "netmargin"=data$netmargin, "roa"=data$roa, "roe"=data$roe, "roic"=data$roic, "ros"=data$ros, "ev"=data$ev, "percent_change"=price_dataframe$percent_change, "returns"=price_dataframe$returns)
+setattr(working_data, "row.names", as.vector(working_data$ticker))
+
+
+remove <- c(as.vector(which(working_data$sector %in% c("Telecommunication Services"))), 126)
 working_data <- working_data[-remove,]
 
-data_numeric <- working_data[,-c(1:2,22:23)]
+data_numeric <- working_data[,-c(1:2,14:16)]
 
 working_data
 ```
 
-
 ## Introduction, Design and Primary Questions
 
 ### PLEASE EDIT MY WRITING HERE -- ADD TO THE INTRO, MY KNOWLEDGE OF ECON IS LIMITED
-Our dataset follows S&P500 companies with 23 different variables quantifying their performance on the New York Stock Exchange as of 2017-12-31 (obtained via the Quandl API). Each row is a given a company, with column metrics ranging from Gross Profit and ROE, to Assets and Liabilities. **This report intends to identify various paterns within the data to predict {...}** In particular, we will use the following statistical techniques:
+Our dataset follows S&P500 companies with 16 different variables quantifying their performance on the New York Stock Exchange as of 2017-12-31 (obtained via the Quandl API). Each row is a given a company, with column metrics ranging from Gross Profit and ROE, to Assets and Liabilities. **This report intends to identify various paterns within the data to predict {...}** In particular, we will use the following statistical techniques:
 
 --Which performance metrics tend to vary greatly between stocks? Principal Component Analysis will yield a few uncorrelated principal components in the directions of greatest variance. This will allow us to see which performance metrics tend to correlate with one another (their weights within principal components), and reduce the overall dimensionality and effectively eliminate any correlation between variables to avoid any bias that would be introduced by multicollinearity.
 
@@ -137,9 +152,9 @@ Our dataset follows S&P500 companies with 23 different variables quantifying the
 
 Our dataset has:
 
---Categorical Variables (3): 'Ticker Symbol,' 'S&P500 Sector,' and 'Returns' (did the stock price percent change outperform the S&P500 percent change within the same timeframe?)
+--Categorical Variables (3): 'Ticker Symbol,' 'S&P500 Sector,' and 'Returns' (how much did the stock price percent change with respect to the S&P500 percent change within the same timeframe?)
 
---Continuous Variables (20): 'Assets,' 'Asset Turnover,' 'Cash and Equivalents,' 'Earning Before Interest & Taxes,' 'Earnings Before Interest, Taxes & Depreciation Amortization Margin,' 'Enterprise Value vs Earnings Before Interest, Taxes & Depreciation Amortization,' 'Equity,' 'Gross Profit,' 'Gross Margin,' 'Liabilities,' 'Net Income,' 'Profit Margin,' 'Operating Income,' 'Revenue,' 'Return on Average Assets,' 'Return on Average Equity,' 'Return on Invested Capital,' 'Return on Sales,' 'Percent Change in Stock Price between 12/31/17 and 12/31/18' 
+--Continuous Variables (13): ...
 
 ```{r}
 QQPlot <- function(x, na.rm = TRUE){
@@ -164,27 +179,14 @@ QQPlot(data_numeric)
 
 Several of these variables seem to deviate substantially from univariate Normality. Applying a log transformation will likely help. There are several subtleties. Many variables take on negative values, so to remedy this, I will first shift the data by the magnitude of the smallest value + 1 before taking its log. However, this addition disrupts ratio quantities, which, although it might be helpful to transform, by in large they seem approximately Normal enough that we will leave them unchanged.
 
-### ASK JDRS ABOUT THESE TRANSFORMATIONS
+### ASK JDRS ABOUT TRANSFORMATIONS AND OUTLIER TREATMENT
 ```{r, echo = TRUE, warning=FALSE}
 data_transformed <- data_numeric
 
-data_transformed$assets <- log(data_transformed$assets)
-data_transformed$assetturnover <- log(data_transformed$assetturnover)
-data_transformed$cashneq <- log(data_transformed$cashneq + 1)
-data_transformed$ebit <- log(data_transformed$ebit + abs(min(data_transformed$ebit)) + 1)
-data_transformed$ev <- log(data_transformed$ev)
-data_transformed$ev_ebitda <- log(data_transformed$ev_ebitda)
-data_transformed$equity <- log(data_transformed$equity + abs(min(data_transformed$equity)) + 1)
-data_transformed$gp <- log(data_transformed$gp + abs(min(data_transformed$gp)) + 1)
-data_transformed$liabilities <- log(data_transformed$liabilities + abs(min(data_transformed$liabilities)) + 1)
-data_transformed$netinc <- log(data_transformed$netinc + abs(min(data_transformed$netinc)) + 1)
-data_transformed$opinc <- log(data_transformed$opinc + abs(min(data_transformed$opinc)) + 1)
-data_transformed$revenue <- log(data_transformed$revenue)
+data_transformed$cashneq_liabilities <- log(data_transformed$cashneq_liabilities)
 
 which(is.infinite(as.matrix(data_transformed)) == TRUE)
 which(is.na(as.matrix(data_transformed)) == TRUE)
-
-data_transformed <- as.data.frame(data_transformed)
 
 outliers <- as.vector(which(pcout(data_transformed, makeplot = FALSE)$wfinal01 == 0))
 working_data <- working_data[-outliers,]
@@ -240,7 +242,7 @@ As we can see, our data is very far from multivariate Normal -- nearly all of th
 Let's construct a correlation matrix for our data. Hopefully, some variables will be highly correlated so our data will be a good match for Principal Component Analysis.
 ```{r}
 correlation_matrix <- setattr(as.data.frame(round(cor(data_transformed), 2)), "row.names", names(data_transformed))
-kable(correlation_matrix) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), font_size = 8)
+kable(correlation_matrix) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), font_size = 11)
 ```
 
 
@@ -294,20 +296,20 @@ Looking at the loading coefficients for the first four principal components ("ma
 
 ### ECON KNOWLEDGE PLEASE
 
---First Principal Component Major Contributors: Assets (0.3302195), Ebit (0.3427073), Equity (0.3113194), Ev (0.3096712), Gp (0.3344644), Liabilities (0.3175236), Netinc (0.3004678), Opinc (0.3393669), Revenue (0.3063073)
+--First Principal Component Major Contributors: 
 
 *It seems that all of these variables deal with ...* 
 
 
---Second Principal Component Major Contributors: Assetturnover (-0.4576183), Ebitdamargin (0.4143826), Grossmargin (0.3299659), Netmargin (0.3255007), Ros (0.3877188)
+--Second Principal Component Major Contributors: 
 
 *It seems that all of these variables deal with ...* 
 
---Third Principal Component Major Contributors: Netmargin (-0.3604086), Roa (-0.4972653), Roe (-0.4591578), Roic (-0.3446799)
+--Third Principal Component Major Contributors: 
 
 *It seems that all of these variables deal with ...* 
 
---Fourth Principal Component Major Contributors: Cashneq (-0.3541464), Ev_ebitda (-0.6414379), Grossmargin (-0.3866646), Roic (-0.3104997)
+--Fourth Principal Component Major Contributors: 
 
 *It seems that all of these variables deal with ...* 
 
@@ -333,40 +335,68 @@ ciscoreplot<-function(x,comps,namevec){
     xlim=c(min(y1vec,x$scores[,comps[1]]),max(y1vec,x$scores[,comps[1]])))
     lines(y1vec,y2vecpos,col="Red",lwd=2)
     lines(y1vec,y2vecneg,col="Red",lwd=2)
-  outliers<-((x$scores[,comps[1]]^2)/(x$sdev[comps[1]]^2)+(x$scores[,comps[2]]^2)/(x$sdev[comps[2]]^2))>5.99
+  outliers <-((x$scores[,comps[1]]^2)/(x$sdev[comps[1]]^2)+(x$scores[,comps[2]]^2)/(x$sdev[comps[2]]^2))>5.99
   points(x$scores[outliers,comps[1]],x$scores[outliers,comps[2]],pch=19,cex=1.2,col="Blue")
   text(x$scores[outliers,comps[1]],x$scores[outliers,comps[2]],col="Blue",lab=namevec[outliers], pos=4)
+  score_outliers <<- as.vector(which(outliers == TRUE))
 }
 ```
 
 
 ```{r}
 ciscoreplot(pc1,c(1,2), names(working_data))
+# outliers <- score_outliers
+# 
 ciscoreplot(pc1,c(1,3), names(working_data))
+# outliers <- c(outliers, score_outliers)
+# 
 ciscoreplot(pc1,c(1,4), names(working_data))
+# outliers <- c(outliers, score_outliers)
+# 
+ciscoreplot(pc1,c(2,3), names(working_data))
+# outliers <- c(outliers, score_outliers)
+# 
+ciscoreplot(pc1,c(2,4), names(working_data))
+# outliers <- c(outliers, score_outliers)
+# 
+ciscoreplot(pc1,c(3,4), names(working_data))
+# outliers <- c(outliers, score_outliers)
+# 
+# outliers <- unique(outliers)
 ```
 
 \\ NEED MORE ANALYSIS HERE
+
+
+
 
 ```{r}
 biplot(pc2,choices=c(1,2),pc.biplot=T)
 biplot(pc2,choices=c(1,3),pc.biplot=T)
 biplot(pc2,choices=c(1,4),pc.biplot=T)
+biplot(pc2,choices=c(2,3),pc.biplot=T)
+biplot(pc2,choices=c(2,4),pc.biplot=T)
+biplot(pc2,choices=c(3,4),pc.biplot=T)
+```
 
-autoplot(pc2, x=1, y=2)
-autoplot(pc2, x=1, y=3)
-autoplot(pc2, x=1, y=4)
+```{r}
+# working_data <- working_data[-outliers,]
+# data_transformed <- data_transformed[-outliers,]
+# 
+# pc3 <- prcomp(data_transformed, scale=TRUE)
+# print(summary(pc3),digits=2)
 ```
 
 ```{r}
 PCA_Data <- pc2$x[,c(1:4)]
-Sectors <- working_data$sector
+Sectors <- droplevels(working_data$sector)
 Returns <- working_data$returns
 
 PCA_Data <- data.frame(Returns, Sectors, PCA_Data)
 
 PCA_Data
 ```
+
 
 Let's take a look at boxplots of each stock's principal component values, grouped by industry.
 ```{r}
@@ -381,6 +411,7 @@ boxplot(PC4 ~ Sectors, data=PCA_Data, horizontal = T, main="PC4 by Industry", la
 
 Let's take a look at boxplots of each stock's principal component values, grouped by returns. "High" means the percent change of the stock price was more positive than the percent change of the SP500 between December 31st, 2017 and December 31st, 2018. "Low" means the opposite.
 ```{r}
+par(mar=c(3,5,2,2))
 boxplot(PC1 ~ Returns, data=PCA_Data, horizontal = T, main="PC1 by Returns", las=2)
 boxplot(PC2 ~ Returns, data=PCA_Data, horizontal = T, main="PC2 by Returns", las=2)
 boxplot(PC3 ~ Returns, data=PCA_Data, horizontal = T, main="PC3 by Returns", las=2)
@@ -388,6 +419,10 @@ boxplot(PC4 ~ Returns, data=PCA_Data, horizontal = T, main="PC4 by Returns", las
 ```
 
 ```{r, echo = TRUE}
+print("Covariance Matrix for Mediocre")
+cov(PCA_Data[PCA_Data$Returns == "Mediocre", 3:6])
+cat(c("log-determinant", log(det(cov(PCA_Data[PCA_Data$Returns == "Mediocre", 3:6]))), "\n\n"))
+
 print("Covariance Matrix for High")
 cov(PCA_Data[PCA_Data$Returns == "High", 3:6])
 cat(c("log-determinant", log(det(cov(PCA_Data[PCA_Data$Returns == "High", 3:6]))), "\n\n"))
@@ -400,6 +435,7 @@ boxM(PCA_Data[,c("PC1","PC2","PC3","PC4")], PCA_Data$Returns)
 ```
 
 ```{r}
+CSQPlot(PCA_Data[which(working_data$returns == "Mediocre"),][-c(1,2)], label="Mediocre")
 CSQPlot(PCA_Data[which(working_data$returns == "High"),][-c(1,2)], label="High")
 CSQPlot(PCA_Data[which(working_data$returns == "Low"),][-c(1,2)], label="Low")
 ```
@@ -413,7 +449,7 @@ for (i in names(data_transformed)){
 names(data_transformed)[which.max(abs(correlations))] # roic
 
 data.QDA <- data_transformed # the data 
-group.QDA <- working_data$returns # the classes 
+group.QDA <- as.factor(working_data$returns) # the classes 
 
 # starting with roic because it has the highest pearson correlation with percent change
 
@@ -424,14 +460,9 @@ plot(stepwise.qda)
 # LMAO THIS WAS GARBAGE
 ```
 
+
 ```{r}
 manova <- manova(as.matrix(data.QDA) ~ group.QDA)
-summary.aov(manova)
-```
-
-\\ NEED TO DISCUSS AS A GROUP WHAT THIS MEANS
-
-```{r}
 summary.manova(manova,test="Wilks")
 ```
 
@@ -440,7 +471,7 @@ QDA, no cross-validation
 QDA <- qda(data.QDA, group.QDA, CV=FALSE) 
 table(group.QDA, predict(QDA)$class)
 
-# 72.5% correct
+# ~55.1% correct
 ```
 
 QDA, with cross-validation
@@ -448,14 +479,9 @@ QDA, with cross-validation
 cv.QDA <- qda(data.QDA, group.QDA, CV=TRUE) 
 table(group.QDA, cv.QDA$class)
 
-# ~62.2% correct
+# ~46.1% correct
 ```
 
-```{r}
-# partimat(as.factor(group.QDA)~. , data=data.QDA, method="qda") 
-
-# GETTING ERRORS NEED TO ASK JDRS
-```
 
 
 Nonparametric k-nearest neighbor (leave-one-out)
@@ -476,28 +502,32 @@ best_k
 success_rate <- colMeans(results)[best_k]
 success_rate
 ```
-Leaving out one point, and predicting its group using the k-nearest neighbor method, and repeating this for all 331 points in our dataset, this method predicts the group with approximately 57.8% success rate.
+Leaving out one point, and predicting its group using the k-nearest neighbor method, and repeating this for all 332 points in our dataset, this method predicts the group with approximately 46.7% success rate.
 
-Support-Vector Machine, ML binary classification method, with k-fold (30) cross-validation
+Support-Vector Machine, ML binary classification method, with cross-validation
 ```{r}
 svm_data <- data.frame(data_transformed, "returns" = as.factor(working_data$returns))
 
-# percent_correct <- c()
+# percent_correct <- c(); misclass <- matrix(rep(0, 9), nrow = 3, ncol = 3)
 # for (i in 1:30){
 #   withold <- as.vector(sample.int(nrow(svm_data), 30))
 #   train <- svm_data[-withold,]
 #   test <- svm_data[withold,]
-#   
-#   tune.out <- tune(svm, returns~. , data=train, kernel = "radial", scale = TRUE,ranges = list(cost = c(0.1,1,10), gamma = c(0.5,1)))
+# 
+#   tune.out <- tune(svm, returns~. , data=train, kernel = "radial", scale = TRUE, ranges = list(cost = c(0.1,1,10), gamma = c(0.5,1)))
 #   bestmod <- tune.out$best.model
-#   
+# 
 #   predicted_returns.test <- predict(bestmod, test)
 #   misclass.test <- table(predict = predicted_returns.test, truth = test$returns)
-#   percent_correct[i] <- sum(misclass.test[c(1,4)])/30
+#   percent_correct[i] <- sum(misclass.test[c(1,4,9)])/30
+#   misclass <- misclass + as.matrix(misclass.test)
 #   print(i)
 # }
 # 
 # mean(percent_correct)
+# misclass #out of 900
+# 
+# sum(misclass[c(1,5,9)])/900
 
 tune.out <- tune(svm, returns~. , data=svm_data, kernel = "radial", cross = 30, scale = TRUE, ranges = list(cost = c(0.1,1,10), gamma = c(0.5,1,2)))
 bestmod <- tune.out$best.model
