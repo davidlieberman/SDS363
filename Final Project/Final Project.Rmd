@@ -60,6 +60,7 @@ data <- na.omit(data)
 # sink()
 ```
 
+PRICE DATA
 ```{r}
 price_2018_1 <- Quandl.datatable("SHARADAR/SF1",  ticker=companies[1:252], calendardate="2018-12-31", qopts.columns=c("ticker", "price"))
 price_2018_1 <- price_2018_1[order(price_2018_1$ticker),]
@@ -119,6 +120,7 @@ setattr(price_dataframe, "row.names", as.vector(data$ticker))
 price_dataframe
 ```
 
+CONSTRUCTING OUR WORKING DATA
 ```{r}
 equity_assets <- data$equity / data$assets
 cashneq_liabilities <- data$cashneq / data$liabilities
@@ -132,7 +134,7 @@ setattr(working_data, "row.names", as.vector(working_data$ticker))
 remove <- c(as.vector(which(working_data$sector %in% c("Telecommunication Services"))), 125)
 working_data <- working_data[-remove,]
 
-data_numeric <- working_data[,-c(1:2,14:16)]
+working_data$sector <- droplevels(working_data$sector)
 
 working_data
 ```
@@ -174,15 +176,15 @@ QQPlot <- function(x, na.rm = TRUE){
 First, let's take a look at the data and make quantile-quantile plots for each performance metric to see if each variable is approximately univariate Normal.
 ```{r}
 kable(working_data[1:10,]) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed"), font_size = 6)
-QQPlot(data_numeric)
+QQPlot(working_data[,-c(1:2,14:16)])
 ```
 
 Several of these variables seem to deviate substantially from univariate Normality. Applying a log transformation will likely help. There are several subtleties. Many variables take on negative values, so to remedy this, I will first shift the data by the magnitude of the smallest value + 1 before taking its log. However, this addition disrupts ratio quantities, which, although it might be helpful to transform, by in large they seem approximately Normal enough that we will leave them unchanged.
 
 
-### ASK JDRS ABOUT TRANSFORMATIONS AND OUTLIER TREATMENT
+TRANSFORM NUMERIC DATA AND REMOVE OUTLIERS
 ```{r, echo = TRUE, warning=FALSE}
-data_transformed <- data_numeric
+data_transformed <- working_data[,-c(1:2,14:16)]
 
 data_transformed$cashneq_liabilities <- log(data_transformed$cashneq_liabilities)
 
@@ -191,7 +193,6 @@ which(is.na(as.matrix(data_transformed)) == TRUE)
 
 outliers <- as.vector(which(pcout(data_transformed, makeplot = FALSE)$wfinal01 == 0))
 working_data <- working_data[-outliers,]
-data_numeric <- data_numeric[-outliers,]
 data_transformed <- data_transformed[-outliers,]
 
 data_transformed
@@ -287,9 +288,9 @@ loadings <- as.data.frame(pc1$loadings[,1:3])
 kable(loadings) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
 ```
 
-Looking at the loading coefficients for the first four principal components ("major contributor":= abs(loading coefficient) > 0.3):
+Looking at the loading coefficients for the first three principal components ("major contributor":= abs(loading coefficient) > 0.3):
 
-### ECON KNOWLEDGE PLEASE
+\\ NEED MORE ANALYSIS HERE
 
 --First Principal Component Major Contributors: 
 
@@ -300,6 +301,7 @@ Looking at the loading coefficients for the first four principal components ("ma
 
 *It seems that all of these variables deal with ...* 
 
+
 --Third Principal Component Major Contributors: 
 
 *It seems that all of these variables deal with ...*
@@ -309,6 +311,8 @@ Looking at the loading coefficients for the first four principal components ("ma
 screeplot(pc2,type="lines",col="red",lwd=2,pch=19,cex=1.2,main="Scree Plot")
 ```
 As we can see from the scree plot above, "cutting above the first elbow" leaves us with three principal components and is in good agreement with the "eigenvalues greater than one" findings above.
+
+\\ NEED MORE ANALYSIS HERE
 
 ```{r}
 ciscoreplot<-function(x,comps,namevec){
@@ -343,13 +347,13 @@ ciscoreplot(pc1,c(2,3), working_data$ticker)
 \\ NEED MORE ANALYSIS HERE
 
 
-
-
 ```{r}
 biplot(pc2,choices=c(1,2),pc.biplot=T)
 biplot(pc2,choices=c(1,3),pc.biplot=T)
 biplot(pc2,choices=c(2,3),pc.biplot=T)
 ```
+
+\\ NEED MORE ANALYSIS HERE
 
 ```{r}
 PCA_Data <- pc2$x[,c(1:3)]
@@ -370,9 +374,11 @@ boxplot(PC2 ~ Sectors, data=PCA_Data, horizontal = T, main="PC2 by Industry", la
 boxplot(PC3 ~ Sectors, data=PCA_Data, horizontal = T, main="PC3 by Industry", las=2)
 ```
 
+\\ NEED MORE ANALYSIS HERE
+
 ## Section 2: Discriminant Analysis
 
-Let's take a look at boxplots of each stock's principal component values, grouped by returns. "High" means the percent change of the stock price was more positive than the percent change of the SP500 between December 31st, 2017 and December 31st, 2018. "Low" means the opposite.
+Let's take a look at boxplots of each stock's principal component values, grouped by returns. "High" means the percent change of the stock price was more positive than the percent change of the SP500 between December 31st, 2017 and December 31st, 2018. "Low" means the opposite. We will be using the three principal components constructed above as our new working data, as they capture much of the variance of our original 11 continuous explanatory variables in only 3 dimensions and have the benefit of being uncorrelated.
 ```{r}
 par(mar=c(3,5,2,2))
 boxplot(PC1 ~ Returns, data=PCA_Data, horizontal = T, main="PC1 by Returns", las=2)
@@ -383,7 +389,13 @@ boxplot(PC3 ~ Returns, data=PCA_Data, horizontal = T, main="PC3 by Returns", las
 ```{r}
 plot(PCA_Data[,-c(1,2)], col = 2*(as.numeric(working_data$returns)), pch = as.numeric(working_data$returns)+15, cex=1.2)
 ```
+Inspection of the principal components' projected scatters appears promising. All three groups (each has a different shape and color) seem to have a similar random scatter and "covariant footprint." In other words, it is a strong possibility that the data is multivariate Normal within groups, and the group covariance matricies are not significantly different from one another.
 
+```{r}
+CSQPlot(PCA_Data[which(working_data$returns == "Mediocre"),][-c(1,2)], label="Mediocre")
+CSQPlot(PCA_Data[which(working_data$returns == "High"),][-c(1,2)], label="High")
+CSQPlot(PCA_Data[which(working_data$returns == "Low"),][-c(1,2)], label="Low")
+```
 
 ```{r, echo = TRUE}
 print("Covariance Matrix for Mediocre")
@@ -399,12 +411,6 @@ cov(PCA_Data[PCA_Data$Returns == "Low", 3:5])
 cat(c("log-determinant", log(det(cov(PCA_Data[PCA_Data$Returns == "Low", 3:5]))), "\n\n"))
 
 boxM(PCA_Data[,c("PC1","PC2","PC3")], PCA_Data$Returns)
-```
-
-```{r}
-CSQPlot(PCA_Data[which(working_data$returns == "Mediocre"),][-c(1,2)], label="Mediocre")
-CSQPlot(PCA_Data[which(working_data$returns == "High"),][-c(1,2)], label="High")
-CSQPlot(PCA_Data[which(working_data$returns == "Low"),][-c(1,2)], label="Low")
 ```
 
 STEPWISE LDA
@@ -498,8 +504,6 @@ points(which(correct_or_not == FALSE), y=posterior.LDA[correct_or_not == FALSE],
 legend("topright",legend=c("Correct", "Incorrect"), col=c(3,2), pch=c(15,16))
 ```
 
-
-
 Nonparametric k-nearest neighbor (leave-one-out)
 ```{r}
 results <- matrix(nrow = 45, ncol = 20)
@@ -521,7 +525,7 @@ success_rate
 Leaving out one point, and predicting its group using the k-nearest neighbor method, and repeating this for all 335 points in our dataset, this method predicts the group with approximately 46.7% success rate.
 
 Support-Vector Machine, ML binary classification method, with cross-validation
-```{r, eval=FALSE}
+```{r}
 svm_data <- PCA_Data[,-2]
 
 tune.out <- tune(svm, Returns~. , data=svm_data, kernel = "radial", cross = 30, scale = TRUE, ranges = list(cost = c(0.1,1,10), gamma = c(0.5,1,2)))
@@ -530,15 +534,8 @@ bestmod <- tune.out$best.model
 bestmod$accuracies
 cat("\n")
 bestmod$tot.accuracy
-```
 
-```{r}
-plot(ksvm(Returns~PC1+PC2, data=svm_data))
-plot(ksvm(Returns~PC1+PC3, data=svm_data))
-plot(ksvm(Returns~PC2+PC3, data=svm_data))
-```
 
-```{r}
 # percent_correct <- c(); misclass <- matrix(rep(0, 9), nrow = 3, ncol = 3)
 # for (i in 1:30){
 #   withold <- as.vector(sample.int(nrow(svm_data), 30))
@@ -550,15 +547,60 @@ plot(ksvm(Returns~PC2+PC3, data=svm_data))
 # 
 #   predicted_returns.test <- predict(bestmod, test)
 #   misclass.test <- table(predict = predicted_returns.test, truth = test$Returns)
-#   percent_correct[i] <- sum(diag(prop.table(misclass.test)))/30
+#   percent_correct[i] <- sum(diag(prop.table(misclass.test)))
 #   misclass <- misclass + as.matrix(misclass.test)
 #   print(i)
 # }
 # 
 # mean(percent_correct)
 # misclass #out of 900
-# 
-# sum(diag(prop.table(misclass)))/900
+```
+
+```{r}
+svm_data$Returns <- ifelse(working_data$percent_change > sp500_percent, "High", "Low")
+## ONLY TAKES BINARY HIGH/LOW
+
+
+plot(ksvm(Returns~PC1+PC2, data=svm_data))
+plot(ksvm(Returns~PC1+PC3, data=svm_data))
+plot(ksvm(Returns~PC2+PC3, data=svm_data))
 ```
 
 
+## CLUSTER ANALYSIS
+
+Analyzing the question "will cutting at 10 clusters roughly group the companies into their respective sectors?"
+
+```{r}
+data_dist <- dist(PCA_Data[,-c(1,2)], method = "euclidean")
+data_clust <- hclust(data_dist, method = "ward.D2")
+
+plot(data_clust, labels = FALSE, xlab="",ylab="Distance", main="Clustering for Stocks", cex = .5)
+rect.hclust(data_clust, k=10) #10 Sectors
+```
+
+```{r}
+cluster_groupings_companies <- as.numeric(cutree(data_clust, k=10))
+
+cluster_dataframe <- data.frame(working_data[,c(1,2)],cluster_groupings_companies)
+cluster_dataframe <- arrange(cluster_dataframe, factor(cluster_groupings_companies))
+clusters <- cluster_dataframe %>% group_split(cluster_groupings_companies)
+
+membership_proportion <- c(); cluster_analytics <- list(); classifications <- c()
+for (i in 1:10){
+  counts <- table(clusters[[i]]$sector)
+  membership_proportion <- round(prop.table(counts)[which.max(counts)], 4)
+  new_classifications <- ifelse(clusters[[i]]$sector == names(membership_proportion), TRUE, FALSE)
+  names(new_classifications) <- clusters[[i]]$ticker
+  cluster_analytics[[i]] <- c("membership_proportion"=as.character(membership_proportion), new_classifications)
+  names(cluster_analytics)[i] <- paste(i,names(membership_proportion))
+  classifications <- c(classifications, new_classifications)
+}
+classifications <- classifications[order(names(classifications))]
+
+cluster_analytics
+
+#classifications
+cat("\n")
+mean(classifications)
+```
