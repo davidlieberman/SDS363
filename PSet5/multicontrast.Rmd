@@ -5,7 +5,7 @@ date: "April 5th, 2019"
 output: html_document
 ---
 
-##  Environmental Attitude Survey
+Environmental Attitude Survey:
 
 For four questions, the scale is (1=Strongly Agree, 5=Strongly Disagree)
 v10 : Modern science will solve our environmental problems with little change to our way of life
@@ -91,12 +91,12 @@ multicontrast <- function(contrast, data, grouping){
 as.matrix(unique(envsurvey[1])) # Just to see the countries' order for the contrasts vector
 ```
 
+Japan vs US
 ```{r}
-# Japan vs US
 multicontrast(c(1,0,-1,0), envsurvey[2:6], envsurvey[1])
 ```
 
+US vs Rest of the World
 ```{r}
-# US vs Rest of the World
 multicontrast(c(3,-1,-1,-1), envsurvey[2:6], envsurvey[1])
 ```
