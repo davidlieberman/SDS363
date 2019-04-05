@@ -98,8 +98,7 @@ multicontrast <- function(contrasts, vars, data){
 ```
 
 ```{r}
-countries <- as.matrix(unique(data[1]))
-countries # Just to see the countries' order for the contrasts vector
+as.matrix(unique(data[1])) # Just to see the countries' order for the contrasts vector
 ```
 
 ```{r}
