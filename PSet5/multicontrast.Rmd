@@ -53,11 +53,11 @@ multicontrast <- function(contrasts, vars, data){
   # Calculate Weighted Sum of Squared Weights
   SW <- sum(contrasts^2 / N)
   
-  # Calculate Hypothesis Matrix
-  H <- colSums(contrasts*M)
-  H <- (cbind(H) %*% rbind(H)) / SW
+  # Calculate SSCP Between
+  SSCP_between <- colSums(contrasts*M)
+  SSCP_between <- (cbind(SSCP_between) %*% rbind(SSCP_between)) / SW
   
-  # Calculate Error Matrix (SSCP_within)
+  # Calculate SSCP Within
   SSCP_within_each_group <- list()
   for (i in 1:length(groups)){
     curr.group <- groups[i]
@@ -71,11 +71,9 @@ multicontrast <- function(contrasts, vars, data){
   }
   
   SSCP_within <- Reduce("+", SSCP_within_each_group) 
-  
-  E <- SSCP_within
-  
+
   # Calculate Wilk's lambda
-  Lambda <- det(E) / det(H + E)
+  Lambda <- det(SSCP_within) / det(SSCP_between + SSCP_within)
   
   # Calculate Degrees of Freedom
   p <- ncol(Y) # no.variables
