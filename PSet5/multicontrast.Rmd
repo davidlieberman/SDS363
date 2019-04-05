@@ -34,7 +34,7 @@ envsurvey
 ```{r}
 multicontrast <- function(contrast, data, grouping){
   
-  # Grouping
+  # Groups
   groups <- as.vector(as.matrix(unique(grouping)))
   
   # Multivariate Means for Each Variable in Each Group
@@ -54,19 +54,16 @@ multicontrast <- function(contrast, data, grouping){
   
   # Calculate SSCP Within (Error Matrix)
   SSCP_within_each_group <- list()
-  for (i in 1:length(groups)){
-    curr.group <- groups[i]
-    X <- subset(data, grouping == curr.group)
-    
+  for (i in seq_along(groups)){
+    X <- subset(data, grouping == groups[i])
     deviations <- matrix(0, nrow(X), ncol(X))
     for (j in 1:ncol(X)){
       deviations[,j] <- X[,j] - M[i,j]
     }
     SSCP_within_each_group[[i]] <- t(deviations) %*% deviations
   }
+  SSCP_within <- Reduce("+", SSCP_within_each_group)
   
-  SSCP_within <- Reduce("+", SSCP_within_each_group) 
-
   # Calculate Wilks' Lambda
   lambda <- det(SSCP_within) / det(SSCP_between + SSCP_within)
   
@@ -96,12 +93,10 @@ as.matrix(unique(envsurvey[1])) # Just to see the countries' order for the contr
 
 ```{r}
 # Japan vs US
-
 multicontrast(c(1,0,-1,0), envsurvey[2:6], envsurvey[1])
 ```
 
 ```{r}
 # US vs Rest of the World
-
 multicontrast(c(3,-1,-1,-1), envsurvey[2:6], envsurvey[1])
 ```
