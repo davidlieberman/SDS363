@@ -1,7 +1,7 @@
 ---
 title: "Multivariate Contrasts"
-author: "Yavuz Ramiz Çolak, Ryo Tamaki, Liana Wang, David Lieberman"
-date: "March, 2019"
+author: "David Lieberman, Yavuz Ramiz Çolak, Ryo Tamaki, Liana Wang"
+date: "April 5th, 2019"
 output: html_document
 ---
 
@@ -14,7 +14,7 @@ V25 : There is no point in doing what I can for the environment unless others do
 v47 : Poorer countries should be expected to make less effort than richer countries to protect the environment
 
 One question has a different scale :
-v38 : In general, do you think that a rise in the world???s temperature caused by the ???greenhouse effect??? is (1=Extremely Dangerous for you and family, 5=Not dangerous for you and family)
+v38 : In general, do you think that a rise in the world's temperature caused by the greenhouse effect is (1=Extremely Dangerous for you and family, 5=Not dangerous for you and family)
 
 In addition, the following variables were measured
 V3 : Country (Japan, US, Mexico, Netherlands)
@@ -27,10 +27,12 @@ V246 : Political Views (1=Extremely Liberal (Communist), 5=Extremely Conservativ
 
 ```{r}
 envsurvey <-  read.csv("http://www.reuningscherer.net/stat660/data/Environmental_Survey_MANOVA.csv", header=T)
+envsurvey <- envsurvey[1:6]
+envsurvey
 ```
 
 ```{r}
-multicontrast <- function(contrasts, data, grouping){
+multicontrast <- function(contrast, data, grouping){
   
   # Grouping
   groups <- as.vector(as.matrix(unique(grouping)))
@@ -44,13 +46,13 @@ multicontrast <- function(contrasts, data, grouping){
   N <- N[match(groups, row.names(N))]
   
   # Calculate Weighted Sum of Squared Weights
-  SW <- sum(contrasts^2 / N)
+  SW <- sum(contrast^2 / N)
   
-  # Calculate SSCP Between
-  SSCP_between <- colSums(contrasts*M)
-  SSCP_between <- (cbind(SSCP_between) %*% rbind(SSCP_between)) / SW
+  # Calculate SSCP Between (Hypothesis Matrix)
+  C_hat <- colSums(contrast*M)
+  SSCP_between <- (cbind(C_hat) %*% rbind(C_hat)) / SW
   
-  # Calculate SSCP Within
+  # Calculate SSCP Within (Error Matrix)
   SSCP_within_each_group <- list()
   for (i in 1:length(groups)){
     curr.group <- groups[i]
