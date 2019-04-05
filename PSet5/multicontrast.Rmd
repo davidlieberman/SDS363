@@ -1,6 +1,6 @@
 ---
 title: "Multivariate Contrasts"
-author: "David Lieberman"
+author: "Yavuz Ramiz Çolak, Ryo Tamaki, Liana Wang, David Lieberman"
 date: "March, 2019"
 output: html_document
 ---
