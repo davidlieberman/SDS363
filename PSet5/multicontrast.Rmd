@@ -27,23 +27,16 @@ V246 : Political Views (1=Extremely Liberal (Communist), 5=Extremely Conservativ
 
 ```{r}
 envsurvey <-  read.csv("http://www.reuningscherer.net/stat660/data/Environmental_Survey_MANOVA.csv", header=T)
-
-data <- envsurvey[,1:6]
-data
 ```
 
 ```{r}
-multicontrast <- function(contrasts, vars, data){
+multicontrast <- function(contrasts, data, grouping){
   
   # Grouping
-  grouping <- data[,-vars]
-  groups <- unique(grouping)
-  
-  # Matrix of Variables
-  Y <- as.matrix(data[,vars])
+  groups <- as.vector(as.matrix(unique(grouping)))
   
   # Multivariate Means for Each Variable in Each Group
-  M <- apply(Y, 2, function(y) tapply(y, grouping, mean))
+  M <- apply(data, 2, function(y) tapply(y, grouping, mean))
   M <- M[match(groups, row.names(M)),]
   
   # Counts for Each Group
@@ -61,7 +54,7 @@ multicontrast <- function(contrasts, vars, data){
   SSCP_within_each_group <- list()
   for (i in 1:length(groups)){
     curr.group <- groups[i]
-    X <- subset(Y, grouping == curr.group)
+    X <- subset(data, grouping == curr.group)
     
     deviations <- matrix(0, nrow(X), ncol(X))
     for (j in 1:ncol(X)){
@@ -72,41 +65,41 @@ multicontrast <- function(contrasts, vars, data){
   
   SSCP_within <- Reduce("+", SSCP_within_each_group) 
 
-  # Calculate Wilk's lambda
-  Lambda <- det(SSCP_within) / det(SSCP_between + SSCP_within)
+  # Calculate Wilks' Lambda
+  lambda <- det(SSCP_within) / det(SSCP_between + SSCP_within)
   
   # Calculate Degrees of Freedom
-  p <- ncol(Y) # no.variables
-  m <- nrow(Y) - length(groups)  # no.observations - no.groups
+  p <- ncol(data) # no.variables
+  m <- nrow(data) - length(groups)  # no.observations - no.groups
   
   df1 <- p
   df2 <- m-p+1
   
   # Calculate approx. F
-  F.stat <- (1 - Lambda) / Lambda * df2 / df1
+  F.stat <- (1 - lambda) / lambda * df2 / df1
   
   # Calculate p-value from F distribution
   p.value <- 1 - pf(F.stat, df1, df2)
   
   # Output
-  out <- c(Lambda, F.stat, df1, df2, p.value)
+  out <- c(lambda, F.stat, df1, df2, p.value)
   names(out) <- c("Wilks", "approx.F", "df1", "df2", "p.value")
   return(out)
 }
 ```
 
 ```{r}
-as.matrix(unique(data[1])) # Just to see the countries' order for the contrasts vector
+as.matrix(unique(envsurvey[1])) # Just to see the countries' order for the contrasts vector
 ```
 
 ```{r}
 # Japan vs US
 
-multicontrast(c(1,0,-1,0), 2:6, data)
+multicontrast(c(1,0,-1,0), envsurvey[2:6], envsurvey[1])
 ```
 
 ```{r}
 # US vs Rest of the World
 
-multicontrast(c(3,-1,-1,-1), 2:6, data)
+multicontrast(c(3,-1,-1,-1), envsurvey[2:6], envsurvey[1])
 ```
