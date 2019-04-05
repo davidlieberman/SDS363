@@ -366,14 +366,6 @@ PCA_Data
 ```
 
 
-Let's take a look at boxplots of each stock's principal component values, grouped by industry.
-```{r}
-par(mar=c(3,15,2,2))
-boxplot(PC1 ~ Sectors, data=PCA_Data, horizontal = T, main="PC1 by Industry", las=2)
-boxplot(PC2 ~ Sectors, data=PCA_Data, horizontal = T, main="PC2 by Industry", las=2)
-boxplot(PC3 ~ Sectors, data=PCA_Data, horizontal = T, main="PC3 by Industry", las=2)
-```
-
 \\ NEED MORE ANALYSIS HERE
 
 ## Section 2: Discriminant Analysis
@@ -387,14 +379,14 @@ boxplot(PC3 ~ Returns, data=PCA_Data, horizontal = T, main="PC3 by Returns", las
 ```
 
 ```{r}
-plot(PCA_Data[,-c(1,2)], col = 2*(as.numeric(working_data$returns)), pch = as.numeric(working_data$returns)+15, cex=1.2)
+plot(PCA_Data[,-c(1,2)], col = 2*(as.numeric(PCA_Data$Returns)), pch = as.numeric(PCA_Data$Returns)+15, cex=1.2)
 ```
 Inspection of the principal components' projected scatters appears promising. All three groups (each has a different shape and color) seem to have a similar random scatter and "covariant footprint." In other words, it is a strong possibility that the data is multivariate Normal within groups, and the group covariance matricies are not significantly different from one another.
 
 ```{r}
-CSQPlot(PCA_Data[which(working_data$returns == "Mediocre"),][-c(1,2)], label="Mediocre")
-CSQPlot(PCA_Data[which(working_data$returns == "High"),][-c(1,2)], label="High")
-CSQPlot(PCA_Data[which(working_data$returns == "Low"),][-c(1,2)], label="Low")
+CSQPlot(PCA_Data[which(PCA_Data$Returns == "Mediocre"),][-c(1,2)], label="Mediocre")
+CSQPlot(PCA_Data[which(PCA_Data$Returns == "High"),][-c(1,2)], label="High")
+CSQPlot(PCA_Data[which(PCA_Data$Returns == "Low"),][-c(1,2)], label="Low")
 ```
 
 ```{r, echo = TRUE}
@@ -415,18 +407,16 @@ boxM(PCA_Data[,c("PC1","PC2","PC3")], PCA_Data$Returns)
 
 STEPWISE LDA
 ```{r}
-correlations <- c(); j <- 1
-for (i in names(data_transformed)){
-  correlations[i] <- cor(working_data$percent_change, data_transformed[[i]])
-}
-names(data_transformed)[which.max(abs(correlations))] # roic
+paste("PC1 correlation with percent_change:", cor(working_data$percent_change, PCA_Data$PC1))
+paste("PC2 correlation with percent_change:", cor(working_data$percent_change, PCA_Data$PC2))
+paste("PC3 correlation with percent_change:", cor(working_data$percent_change, PCA_Data$PC3)) #PC3 Biggest
 
-data.LDA <- data_transformed # the data 
-group.LDA <- as.factor(working_data$returns) # the classes 
+data.LDA <- as.matrix(PCA_Data[,-c(1,2)]) # the data 
+group.LDA <- as.factor(PCA_Data$Returns) # the classes 
 
-# starting with roic because it has the highest pearson correlation with percent change
+# starting with PC3 because it has the highest pearson correlation with percent change
 
-stepwise.lda <- stepclass(data.LDA, group.LDA, "lda", start.vars = "roic")
+stepwise.lda <- stepclass(data.LDA, group.LDA, "lda", start.vars = "PC3")
 stepwise.lda
 plot(stepwise.lda)
 
@@ -434,15 +424,10 @@ plot(stepwise.lda)
 ```
 
 
-```{r}
-manova <- manova(as.matrix(data.LDA) ~ group.LDA)
-summary.manova(manova, test="Wilks")
-```
-
 LDA, no cross-validation
 ```{r}
 LDA <- lda(Returns~PC1+PC2+PC3, PCA_Data, CV=FALSE) 
-confusion <- table(group.LDA, predict(LDA)$class)
+confusion <- table(PCA_Data$Returns, predict(LDA)$class)
 
 print(confusion)
 sum(diag(prop.table(confusion)))
@@ -451,18 +436,18 @@ sum(diag(prop.table(confusion)))
 QDA, with cross-validation
 ```{r}
 cv.LDA <- lda(Returns~PC1+PC2+PC3, PCA_Data, CV=TRUE) 
-confusion <- table(group.LDA, cv.LDA$class)
+confusion <- table(PCA_Data$Returns, cv.LDA$class)
 
 print(confusion)
 sum(diag(prop.table(confusion)))
 ```
 
 ```{r}
-partimat(Returns ~ PC1+PC2+PC3, data=PCA_Data, method="lda")
+partimat(Returns~PC1+PC2+PC3, data=PCA_Data, method="lda")
 ```
 
 ```{r}
-scores <- data.frame(Predicted_Returns=predict(LDA)$class, predict(LDA)$x, True_Returns=group.LDA)
+scores <- data.frame(Predicted_Returns=predict(LDA)$class, predict(LDA)$x, True_Returns=factor(PCA_Data$Returns))
 boundary_function <- lda(scores[,2:3], scores[,1])
 
 x <- seq(min(scores[,2]), max(scores[,2]), length.out=nrow(scores))
@@ -493,7 +478,7 @@ ggplot(scores, aes(x=LD1, y=LD2)) +
 ```{r}
 posterior.LDA <- apply(predict(LDA)$posterior, 1, max)
 
-correct_or_not <- as.factor(predict(LDA)$class == group.LDA)
+correct_or_not <- as.factor(predict(LDA)$class == PCA_Data$Returns)
 
 plot(x=seq(1,nrow(PCA_Data)), y=posterior.LDA, type="n", main="Posterior Probability of Predicted Membership Colored by Accuracy",
      xlab="Index",ylab="Posterior Probability")
@@ -511,8 +496,8 @@ for (j in 1:20) {
   for (i in 1:45) {
     test_point <- data.LDA[i,]
     train_data <- data.LDA[-i,]
-    knn_prediction <- as.vector(knn(train = train_data, test = test_point, cl = group.LDA[-i], k = j))
-    truth <- as.vector(group.LDA[i])
+    knn_prediction <- as.vector(knn(train=train_data, test=test_point, cl=PCA_Data$Returns[-i], k=j))
+    truth <- as.vector(PCA_Data$Returns[i])
     results[i,j] <- truth == knn_prediction
   }
 }
@@ -567,9 +552,30 @@ plot(ksvm(Returns~PC2+PC3, data=svm_data))
 ```
 
 
-## CLUSTER ANALYSIS
+## Section 3: Cluster Analysis
 
 Analyzing the question "will cutting at 10 clusters roughly group the companies into their respective sectors?"
+
+```{r}
+print("Summary Statistics for PC1")
+paste("mean:", mean(PCA_Data$PC1))
+paste("sd:", sd(PCA_Data$PC1))
+invisible(qqPlot(PCA_Data$PC1))
+cat("\n")
+
+print("Summary Statistics for PC2")
+paste("mean:", mean(PCA_Data$PC2))
+paste("sd:", sd(PCA_Data$PC2))
+invisible(qqPlot(PCA_Data$PC2))
+cat("\n")
+
+print("Summary Statistics for PC3")
+paste("mean:", mean(PCA_Data$PC3))
+paste("sd:", sd(PCA_Data$PC3))
+invisible(qqPlot(PCA_Data$PC3))
+cat("\n")
+```
+The summary statistics show that the PCA components appear to have approximately equal means and standard deviations and appear to be approximately univariate Normal, so we won't restandardize the data.
 
 ```{r}
 data_dist <- dist(PCA_Data[,-c(1,2)], method = "euclidean")
@@ -603,4 +609,27 @@ cluster_analytics
 #classifications
 cat("\n")
 mean(classifications)
+```
+
+
+## Section 4: MANOVA
+
+Let's take a look at boxplots of each stock's principal component values, grouped by industry.
+```{r}
+par(mar=c(3,15,2,2))
+boxplot(PC1 ~ Sectors, data=PCA_Data, horizontal = T, main="PC1 by Industry", las=2)
+boxplot(PC2 ~ Sectors, data=PCA_Data, horizontal = T, main="PC2 by Industry", las=2)
+boxplot(PC3 ~ Sectors, data=PCA_Data, horizontal = T, main="PC3 by Industry", las=2)
+```
+
+```{r}
+for (name in unique(Sectors)){
+  CSQPlot(PCA_Data[which(Sectors==name),][-c(1:2)], label=name)
+}
+```
+
+
+```{r}
+manova <- manova(as.matrix(PCA_Data[-c(1:2)])~factor(PCA_Data$Sectors))
+summary.manova(manova, test="Wilks")
 ```

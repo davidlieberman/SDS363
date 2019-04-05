@@ -1,0 +1,115 @@
+---
+title: "Multivariate Contrasts"
+author: "David Lieberman"
+date: "March, 2019"
+output: html_document
+---
+
+##  Environmental Attitude Survey
+
+For four questions, the scale is (1=Strongly Agree, 5=Strongly Disagree)
+v10 : Modern science will solve our environmental problems with little change to our way of life
+v12 : Almost everything we do in modern life harms the environment.
+V25 : There is no point in doing what I can for the environment unless others do the same
+v47 : Poorer countries should be expected to make less effort than richer countries to protect the environment
+
+One question has a different scale :
+v38 : In general, do you think that a rise in the world???s temperature caused by the ???greenhouse effect??? is (1=Extremely Dangerous for you and family, 5=Not dangerous for you and family)
+
+In addition, the following variables were measured
+V3 : Country (Japan, US, Mexico, Netherlands)
+V200 : Gender (1=male, 2=female)
+V201 : Age in Years
+V202 : Marital Status (1=Married, 2=Widowed, 3=Divorced, 4=Separated, 5=Single never married)
+V204 : Years of education
+V205 : Highest Degree obtained
+V246 : Political Views (1=Extremely Liberal (Communist), 5=Extremely Conservative (Fascist))
+
+```{r}
+envsurvey <-  read.csv("http://www.reuningscherer.net/stat660/data/Environmental_Survey_MANOVA.csv", header=T)
+
+data <- envsurvey[,1:6]
+data
+```
+
+```{r}
+multicontrast <- function(contrasts, vars, data){
+  
+  # Grouping
+  grouping <- data[,-vars]
+  groups <- unique(grouping)
+  
+  # Matrix of Variables
+  Y <- as.matrix(data[,vars])
+  
+  # Multivariate Means for Each Variable in Each Group
+  M <- apply(Y, 2, function(y) tapply(y, grouping, mean))
+  M <- M[match(groups, row.names(M)),]
+  
+  # Counts for Each Group
+  N <- table(grouping)
+  N <- N[match(groups, row.names(N))]
+  
+  # Calculate Weighted Sum of Squared Weights
+  SW <- sum(contrasts^2 / N)
+  
+  # Calculate Hypothesis Matrix
+  H <- colSums(contrasts*M)
+  H <- (cbind(H) %*% rbind(H)) / SW
+  
+  # Calculate Error Matrix (SSCP_within)
+  SSCP_within_each_group <- list()
+  for (i in 1:length(groups)){
+    curr.group <- groups[i]
+    X <- subset(Y, grouping == curr.group)
+    
+    deviations <- matrix(0, nrow(X), ncol(X))
+    for (j in 1:ncol(X)){
+      deviations[,j] <- X[,j] - M[i,j]
+    }
+    SSCP_within_each_group[[i]] <- t(deviations) %*% deviations
+  }
+  
+  SSCP_within <- Reduce("+", SSCP_within_each_group) 
+  
+  E <- SSCP_within
+  
+  # Calculate Wilk's lambda
+  Lambda <- det(E) / det(H + E)
+  
+  # Calculate Degrees of Freedom
+  p <- ncol(Y) # no.variables
+  m <- nrow(Y) - length(groups)  # no.observations - no.groups
+  
+  df1 <- p
+  df2 <- m-p+1
+  
+  # Calculate approx. F
+  F.stat <- (1 - Lambda) / Lambda * df2 / df1
+  
+  # Calculate p-value from F distribution
+  p.value <- 1 - pf(F.stat, df1, df2)
+  
+  # Output
+  out <- c(Lambda, F.stat, df1, df2, p.value)
+  names(out) <- c("Wilks", "approx.F", "df1", "df2", "p.value")
+  return(out)
+}
+```
+
+```{r}
+countries <- as.matrix(unique(data[1]))
+countries # Just to see the countries' order for the contrasts vector
+```
+
+```{r}
+# Japan vs US
+
+multicontrast(c(1,0,-1,0), 2:6, data)
+```
+
+```{r}
+# US vs Rest of the World
+
+multicontrast(c(3,-1,-1,-1), 2:6, data)
+```
