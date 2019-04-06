@@ -82,7 +82,7 @@ for (i in 1:nrow(data)){
 
 missing <- as.vector(which(is.na(price_dataframe$price_2018)))
 missing_ticker <- data$ticker[missing]
-missing_prices <- c(NA, NA, NA, NA, NA, NA, 43.04, 29.78, NA, 14.66, NA, 47.78, 44.74, NA, 71.34, NA)
+missing_prices <- rep(NA, length(missing_ticker))
 
 j <- 1
 for (i in missing){
@@ -131,7 +131,7 @@ working_data <- data.frame("ticker"=data$ticker, "sector"=data$sector, cashneq_l
 setattr(working_data, "row.names", as.vector(working_data$ticker))
 
 
-remove <- c(as.vector(which(working_data$sector %in% c("Telecommunication Services"))), 125)
+remove <- c(which(working_data$sector %in% c("Telecommunication Services")), which(cashneq_liabilities <= 0))
 working_data <- working_data[-remove,]
 
 working_data$sector <- droplevels(working_data$sector)
@@ -337,7 +337,6 @@ ciscoreplot<-function(x,comps,namevec){
 ```
 
 
-## NEED TO ASK JDRS ABOUT CISCOREPLOT ERRORS
 ```{r}
 ciscoreplot(pc1,c(1,2), working_data$ticker)
 ciscoreplot(pc1,c(1,3), working_data$ticker)
@@ -448,32 +447,22 @@ partimat(Returns~PC1+PC2+PC3, data=PCA_Data, method="lda")
 
 ```{r}
 scores <- data.frame(Predicted_Returns=predict(LDA)$class, predict(LDA)$x, True_Returns=factor(PCA_Data$Returns))
-boundary_function <- lda(scores[,2:3], scores[,1])
+LDA_classifications <- lda(scores[,2:3], scores[,1])
 
-x <- seq(min(scores[,2]), max(scores[,2]), length.out=nrow(scores))
-y <- seq(min(scores[,3]), max(scores[,3]), length.out=nrow(scores))
+contour_grid <- expand.grid(LD1=seq(min(scores$LD1), max(scores$LD1), length.out=500), 
+                            LD2=seq(min(scores$LD2), max(scores$LD2), length.out=500))
+contour_prediction <- predict(LDA_classifications, newdata=contour_grid)
+contour_data <- data.frame(contour_grid, z = as.numeric(contour_prediction$class))
 
+ggplot(scores, aes(x=LD1, y=LD2)) + geom_point(size = 3, aes(pch=Predicted_Returns, col=Predicted_Returns)) + 
+  stat_contour(aes(x = LD1, y = LD2, z = z), data = contour_data, size=1, color="black") +
+  ggtitle("Predicted Returns") + theme(plot.title = element_text(size=20), legend.title=element_blank())
 
-discriminant_value_grid <- matrix(c(rep(x,length(y)), rep(y, rep(length(x), length(y)))),,2)
-
-boundary_1 <- predict(boundary_function, discriminant_value_grid)$post[, c("High","Mediocre")] %*% c(1,1)
-boundary_2 <- predict(boundary_function, discriminant_value_grid)$post[, c("Mediocre", "Low")] %*% c(1,1)
-
-boundaries <- data.frame(x=rep(x, length(y)), y=rep(y, each=length(x)), z1=as.vector(boundary_1), z2=as.vector(boundary_2))
-
-
-ggplot(scores, aes(x=LD1, y=LD2)) + 
-    geom_point(size = 3, aes(pch=Predicted_Returns, col=Predicted_Returns)) + 
-    geom_contour(data=boundaries, aes(x=x, y=y, z=z1), breaks=c(0, 0.5), size=1.5, color="black") + 
-    geom_contour(data=boundaries, aes(x=x, y=y, z=z2), breaks=c(0, 0.5), size=1.5, color="black") +
-    ggtitle("Predicted Returns") + theme(plot.title = element_text(hjust=0.5, size=20), legend.title=element_blank())
-
-ggplot(scores, aes(x=LD1, y=LD2)) + 
-    geom_point(size = 3, aes(pch=True_Returns, col=True_Returns)) + 
-    geom_contour(data=boundaries, aes(x=x, y=y, z=z1), breaks=c(0, 0.5), size=1.5, color="black") + 
-    geom_contour(data=boundaries, aes(x=x, y=y, z=z2), breaks=c(0, 0.5), size=1.5, color="black") +
-    ggtitle("True Returns") + theme(plot.title=element_text(hjust=0.5, size=20), legend.title=element_blank())
+ggplot(scores, aes(x=LD1, y=LD2)) + geom_point(size = 3, aes(pch=True_Returns, col=True_Returns)) + 
+  stat_contour(aes(x = LD1, y = LD2, z = z), data = contour_data, size=1, color="black") +
+  ggtitle("True Returns") + theme(plot.title = element_text(size=20), legend.title=element_blank())
 ```
+
 
 ```{r}
 posterior.LDA <- apply(predict(LDA)$posterior, 1, max)
