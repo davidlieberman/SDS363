@@ -1,109 +1,118 @@
 ---
-title: 'Data Cleaning'
-author: "David Lieberman, Yavuz Ramiz Çolak, Ryo Tamaki, Liana Wang"
-date: "March 10th, 2019"
+title: 'S&DS363 Final Project Data'
+author: "Yavuz Ramiz Çolak, Ryo Tamaki, Liana Wang, David Lieberman"
+date: "March 27th, 2019"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 rm(list=ls())
-library(tidyr)
-library(MASS)
+options(warn=-1)
 library(data.table)
-library(dplyr)
-library(tidyverse)
+library(Quandl)
 ```
 
-### Ramiz
+DATA COLLECTION
 ```{r}
-data <- read.csv("fundamentals.csv")
-data <- data[data$Period.Ending == "2015-12-31" | data$Period.Ending == "2014-12-31",]
-##selecting certain columns 
-index1 <- c(1, 2, 3, 7, 8, 10, 11, 15, 18, 25, 26, 29, 31, 32, 33, 34, 38, 42, 48, 49, 61, 62, 63, 69, 72, 73, 78, 79)
-data <- data[ , index1]
-data$X <- NULL
+Quandl.api_key("LQ8syJ41h-Ar9UMq2M-N")
+sp500 <- read.csv("https://pastebin.com/raw/ScRKxckW")
+companies <- as.vector(as.character(sp500$Ticker))
+sector <- as.vector(as.character(sp500$Sector))
+data1 <- Quandl.datatable("SHARADAR/SF1",  ticker=companies[1:252], calendardate="2017-12-31")
+data2 <- Quandl.datatable("SHARADAR/SF1",  ticker=companies[253:505], calendardate="2017-12-31")
+data <- rbind(data1, data2)
+data <- data[order(data$ticker),]
 
-
-#omitting NAs 
+sector <- sector[companies %in% data$ticker]
+data <- cbind(sector, data)
+data <- data[,c(2,1,8:112)]
+data <- data[ , apply(data, 2, function(x) !(length(which(is.na(x))) > 15))]
 data <- na.omit(data)
-t <- table(data$Ticker.Symbol)
-x <- which(t==2)
-y <- names(t)[x]
 
-data2 <- data[data$Ticker.Symbol %in% y,]
-table(data2$Ticker.Symbol)
+# sink("outfile.txt")
+# for (i in names(data)){
+#   cat(i)
+#   cat("\n")
+# }
+# sink()
 ```
 
+PRICE DATA
 ```{r}
-price <- read.csv("prices.csv")
-price$open <- NULL 
-price$low <- NULL 
-price$high <- NULL 
-price$volume <- NULL
-
-price2 <- price
-
-#cleaning date and selecting for 2014/2015 
-price2$date <- gsub("00:00:00", "", price2$date)
-price2 <- price2[price2$date == "2014-12-31" | price2$date == "2015-12-31",]
-
-#selecting for the right stocks
-price2 <- price2[price2$symbol %in% y,]
-table(price2$symbol)
-
-data2 <- data[data$Ticker.Symbol %in% price2$symbol,]
-
-#calculating % change 
-sort.p2 <- with(price2, price2[order(price2$symbol),])
-rownames(sort.p2) <- NULL
-wide <- sort.p2 %>% group_by(symbol) %>% mutate(obs = row_number()) %>% gather(var, val, close) %>%
-  unite(comb, obs, var) %>% spread(comb, val)
+price_2018_1 <- Quandl.datatable("SHARADAR/SF1",  ticker=companies[1:252], calendardate="2018-12-31", qopts.columns=c("ticker", "price"))
+price_2018_1 <- price_2018_1[order(price_2018_1$ticker),]
+price_2018_2 <- Quandl.datatable("SHARADAR/SF1",  ticker=companies[253:505], calendardate="2018-12-31", qopts.columns=c("ticker", "price"))
+price_2018_2 <- price_2018_2[order(price_2018_2$ticker),]
+price_2018 <- rbind(price_2018_1, price_2018_2)
 
 
-for (i in 1:227) {
-  wide[i, 4] <- wide[i+227, 4]
+price_dataframe <- data.frame("ticker" = data$ticker, "price_2017" = data$price, "price_2018" = rep(NA, nrow(data)))
+for (i in 1:nrow(data)){
+  if (data$ticker[i] %in% price_2018$ticker){
+      position_2018 <- which(price_2018$ticker == data$ticker[i])
+      price_dataframe$price_2018[i] <- price_2018$price[position_2018]
+  }
+  else{
+    price_dataframe$price_2018[i] <- NA
+  }
 }
 
-wide$percent_change <- wide$`1_close`
+missing <- as.vector(which(is.na(price_dataframe$price_2018)))
+missing_ticker <- data$ticker[missing]
+missing_prices <- c(NA, NA, NA, NA, NA, NA, 43.04, NA, 14.66, NA, 47.78, NA, 71.34, NA)
 
-for (i in 1:454) {
-  wide$percent_change[i] <- (wide$`2_close`[i]-wide$`1_close`[i])/wide$`1_close`[i]
+j <- 1
+for (i in missing){
+  price_dataframe$price_2018[i] <- missing_prices[j]
+  j <- j + 1
 }
 
-wide <- wide[1:227,]
+missing <- as.vector(which(is.na(price_dataframe$price_2018)))
 
-wide <- wide[rep(1:227,each=2),]
+data <- data[-missing,]
+price_dataframe <- price_dataframe[-missing,]
 
-wide_2 <- cbind(data2, wide$percent_change)
+percent_change <- (price_dataframe$price_2018 - price_dataframe$price_2017)/price_dataframe$price_2018
+sp500_percent <- (2506.85 - 2673.61)/2506.85
+lower_percent_bound <- sp500_percent + 1.5*sp500_percent
+upper_percent_bound <- sp500_percent - 1.5*sp500_percent
 
-colnames(wide_2)
-wide_2$Returns <- wide_2$`wide$percent_change`
-wide_2$Returns <- ifelse(wide_2$Returns > -0.05402873512, "High", "Low")
+returns <- c()
+for (i in 1:length(percent_change)){
+  if (between(percent_change[i], lower_percent_bound, upper_percent_bound, incbounds=TRUE)){
+    returns[i] <- "Mediocre"
+  }
+  else if (percent_change[i] > upper_percent_bound){
+    returns[i] <- "High"
+  }
+  else{
+    returns[i] <- "Low"
+  }
+}
 
-new_data <- wide_2
+price_dataframe <- cbind(price_dataframe, percent_change)
+price_dataframe <- cbind(price_dataframe, returns)
+setattr(price_dataframe, "row.names", as.vector(data$ticker))
+
+price_dataframe
 ```
 
-
-### David
+CONSTRUCTING OUR WORKING DATA
 ```{r}
-data <- new_data[c(FALSE, TRUE),]
-data <- data[-107,]
-data_new <- read.csv("sp500-companylist.csv")[,c(1,3)]
+equity_assets <- data$equity / data$assets
+cashneq_liabilities <- data$cashneq / data$liabilities
+ebit_ev <- data$ebit / data$ev
+ev_ebitda <- data$ev / data$ebitda
 
-Sector <- c()
-for (i in 1:length(data$Ticker.Symbol)){
-  index <- which(data_new[,1] == as.vector(data$Ticker.Symbol)[i])
-  Sector[i] <- as.character(data_new[index,2])
-}
+working_data <- data.frame("ticker"=data$ticker, "sector"=data$sector, cashneq_liabilities, equity_assets, ebit_ev, ev_ebitda, "ebitdamargin"=data$ebitdamargin, "grossmargin"=data$grossmargin, "netmargin"=data$netmargin, "roa"=data$roa, "roe"=data$roe, "roic"=data$roic, "ros"=data$ros, "ev"=data$ev, "percent_change"=price_dataframe$percent_change, "returns"=price_dataframe$returns)
+setattr(working_data, "row.names", as.vector(working_data$ticker))
 
-data <- cbind(Sector, data)
-data <- data[,c(2,1,4:30)]
 
-rownames(data) <- c()
+remove <- c(which(working_data$sector %in% c("Telecommunication Services")), which(cashneq_liabilities <= 0))
+working_data <- working_data[-remove,]
 
-data
+working_data$sector <- droplevels(working_data$sector)
 
-write.csv(data, file = "NYSE_DATA.csv")
+working_data
 ```
-
