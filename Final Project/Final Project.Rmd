@@ -195,17 +195,17 @@ Looking at the loading coefficients for the first three principal components ("m
 
 \\ NEED MORE ANALYSIS HERE
 
---First Principal Component Major Contributors: 
+--First Principal Component Major Contributors: ebitdamargin (-0.486), grossmargin (-0.415), netmargin (-0.353), ros (-0.463)
 
 *It seems that all of these variables deal with ...* 
 
 
---Second Principal Component Major Contributors: 
+--Second Principal Component Major Contributors: netmargin (0.381), roa (0.514), roe (0.488), roic (0.359)
 
 *It seems that all of these variables deal with ...* 
 
 
---Third Principal Component Major Contributors: 
+--Third Principal Component Major Contributors: equality_assets (0.434), ebit_ev (-0.541), ev_ebitda (0.574)
 
 *It seems that all of these variables deal with ...*
 
@@ -239,7 +239,6 @@ ciscoreplot<-function(x,comps,namevec){
 }
 ```
 
-
 ```{r}
 ciscoreplot(pc1,c(1,2), working_data$ticker)
 ciscoreplot(pc1,c(1,3), working_data$ticker)
@@ -263,12 +262,8 @@ Sectors <- droplevels(working_data$sector)
 Returns <- working_data$returns
 
 PCA_Data <- data.frame(Returns, Sectors, PCA_Data)
-
 PCA_Data
 ```
-
-
-\\ NEED MORE ANALYSIS HERE
 
 ## Section 2: Discriminant Analysis
 
@@ -280,6 +275,8 @@ boxplot(PC2 ~ Returns, data=PCA_Data, horizontal = T, main="PC2 by Returns", las
 boxplot(PC3 ~ Returns, data=PCA_Data, horizontal = T, main="PC3 by Returns", las=2)
 ```
 
+\\ NEED MORE ANALYSIS HERE
+
 ```{r}
 plot(PCA_Data[,-c(1,2)], col = 2*(as.numeric(PCA_Data$Returns)), pch = as.numeric(PCA_Data$Returns)+15, cex=1.2)
 ```
@@ -290,6 +287,8 @@ CSQPlot(PCA_Data[which(PCA_Data$Returns == "Mediocre"),][-c(1,2)], label="Medioc
 CSQPlot(PCA_Data[which(PCA_Data$Returns == "High"),][-c(1,2)], label="High")
 CSQPlot(PCA_Data[which(PCA_Data$Returns == "Low"),][-c(1,2)], label="Low")
 ```
+
+Indeed, when the companies are grouped by their returns (either High, Low, or Mediocre), we see that the Chi-Square Quantile plots within groups are roughly linear and within the 95% confidence boundaries. Therefore, we can conclude that within groups, the data follows an approximately multivariate Normal distribution.
 
 ```{r, echo = TRUE}
 print("Covariance Matrix for Mediocre")
@@ -306,6 +305,8 @@ cat(c("log-determinant", log(det(cov(PCA_Data[PCA_Data$Returns == "Low", 3:5])))
 
 boxM(PCA_Data[,c("PC1","PC2","PC3")], PCA_Data$Returns)
 ```
+
+\\ NEED MORE ANALYSIS HERE
 
 STEPWISE LDA
 ```{r}
@@ -325,6 +326,7 @@ plot(stepwise.lda)
 # LMAO THIS WAS GARBAGE
 ```
 
+\\ Boring result, might remove
 
 LDA, no cross-validation
 ```{r}
@@ -335,6 +337,8 @@ print(confusion)
 sum(diag(prop.table(confusion)))
 ```
 
+\\ NEED MORE ANALYSIS HERE
+
 QDA, with cross-validation
 ```{r}
 cv.LDA <- lda(Returns~PC1+PC2+PC3, PCA_Data, CV=TRUE) 
@@ -344,10 +348,16 @@ print(confusion)
 sum(diag(prop.table(confusion)))
 ```
 
+\\ NEED MORE ANALYSIS HERE
+
 ```{r}
 partimat(Returns~PC1+PC2+PC3, data=PCA_Data, method="lda")
 ```
 
+\\ NEED MORE ANALYSIS HERE
+
+
+## NEED TO DISCUSS WITH JDRS
 ```{r}
 scores <- data.frame(Predicted_Returns=predict(LDA)$class, predict(LDA)$x, True_Returns=factor(PCA_Data$Returns))
 LDA_classifications <- lda(scores[,2:3], scores[,1])
@@ -380,6 +390,8 @@ points(which(correct_or_not == FALSE), y=posterior.LDA[correct_or_not == FALSE],
 
 legend("topright",legend=c("Correct", "Incorrect"), col=c(3,2), pch=c(15,16))
 ```
+
+\\ NEED MORE ANALYSIS HERE
 
 Nonparametric k-nearest neighbor (leave-one-out)
 ```{r}
@@ -434,7 +446,7 @@ bestmod$tot.accuracy
 ```
 
 ```{r}
-svm_data$Returns <- ifelse(working_data$percent_change > sp500_percent, "High", "Low")
+svm_data$Returns <- ifelse(working_data$percent_change > (2506.85 - 2673.61)/2506.85, "High", "Low")
 ## ONLY TAKES BINARY HIGH/LOW
 
 
@@ -443,6 +455,7 @@ plot(ksvm(Returns~PC1+PC3, data=svm_data))
 plot(ksvm(Returns~PC2+PC3, data=svm_data))
 ```
 
+\\ NEED MORE ANALYSIS HERE (I'll write this part)
 
 ## Section 3: Cluster Analysis
 
@@ -477,6 +490,8 @@ plot(data_clust, labels = FALSE, xlab="",ylab="Distance", main="Clustering for S
 rect.hclust(data_clust, k=10) #10 Sectors
 ```
 
+\\ NEED MORE ANALYSIS HERE
+
 ```{r}
 cluster_groupings_companies <- as.numeric(cutree(data_clust, k=10))
 
@@ -503,6 +518,7 @@ cat("\n")
 mean(classifications)
 ```
 
+\\ NEED MORE ANALYSIS HERE
 
 ## Section 4: MANOVA
 
@@ -514,14 +530,19 @@ boxplot(PC2 ~ Sectors, data=PCA_Data, horizontal = T, main="PC2 by Industry", la
 boxplot(PC3 ~ Sectors, data=PCA_Data, horizontal = T, main="PC3 by Industry", las=2)
 ```
 
+\\ NEED MORE ANALYSIS HERE
+
 ```{r}
 for (name in unique(Sectors)){
   CSQPlot(PCA_Data[which(Sectors==name),][-c(1:2)], label=name)
 }
 ```
 
+\\ NEED MORE ANALYSIS HERE
 
 ```{r}
 manova <- manova(as.matrix(PCA_Data[-c(1:2)])~factor(PCA_Data$Sectors))
 summary.manova(manova, test="Wilks")
 ```
+
+\\ NEED MORE ANALYSIS HERE
