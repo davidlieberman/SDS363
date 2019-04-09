@@ -105,7 +105,7 @@ data_transformed
 QQPlot(data_transformed)
 ```
 
-After log transforming the data, the variables all appear to be approximately univariate Normal (save for a few pesky outliers).
+After log transforming cashneq_liabilities and removing outliers, the variables all appear to be approximately univariate Normal (save for a few pesky outliers).
 
 ```{r}
 CSQPlot<-function(vars,label="Chi-Square Quantile Plot"){

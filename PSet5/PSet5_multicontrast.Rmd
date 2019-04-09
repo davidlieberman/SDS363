@@ -2,7 +2,8 @@
 title: "Multivariate Contrasts"
 author: "David Lieberman, Yavuz Ramiz Çolak, Ryo Tamaki, Liana Wang"
 date: "April 5th, 2019"
-output: html_document
+output:
+  html_document: default
 ---
 
 Environmental Attitude Survey:
