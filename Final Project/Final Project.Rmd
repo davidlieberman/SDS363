@@ -358,44 +358,19 @@ partimat(Returns~PC1+PC2+PC3, data=PCA_Data, method="lda")
 
 
 ```{r}
-LDA <- lda(Returns ~ PC1 + PC2 + PC3, PCA_Data) 
-scores <- data.frame(Predicted_Returns=predict(LDA)$class, 
-                     predict(LDA)$x, 
-                     True_Returns=factor(PCA_Data$Returns))
-
-PC1 <- seq(min(PCA_Data$PC1), max(PCA_Data$PC1), length.out=10)
-PC2 <- seq(min(PCA_Data$PC2), max(PCA_Data$PC2), length.out=10)
-PC3 <- seq(min(PCA_Data$PC3), max(PCA_Data$PC3), length.out=10)
-
-contour_grid <- expand.grid(PC1=PC1, PC2=PC2, PC3=PC3)
-contour_prediction <- predict(LDA, newdata=contour_grid)
-contour_data <- data.frame(contour_prediction$x, z=as.numeric(contour_prediction$class))
-
-ggplot(data = contour_data, aes(x = LD1, y = LD2)) +
-  geom_point(size = 3, aes(pch=factor(z), col=factor(z)))
-
-# ggplot(contour_data, aes(x = LD1, y = LD2)) +
-#   geom_point(size=3, aes(pch=c(1,2,3), col=c(1,2,3))) +
-#   stat_contour(aes(x = LD1, y = LD2, z = z), data = contour_data, size=1, color="black")
-```
-
-
-## NEED TO DISCUSS WITH JDRS
-```{r}
 scores <- data.frame(Predicted_Returns=predict(LDA)$class, predict(LDA)$x, True_Returns=factor(PCA_Data$Returns))
-LDA_classifications <- lda(scores[,2:3], scores[,1])
-
-contour_grid <- expand.grid(LD1=seq(min(scores$LD1), max(scores$LD1), length.out=500), 
-                            LD2=seq(min(scores$LD2), max(scores$LD2), length.out=500))
-contour_prediction <- predict(LDA_classifications, newdata=contour_grid)
-contour_data <- data.frame(contour_grid, z = as.numeric(contour_prediction$class))
 
 ggplot(scores, aes(x=LD1, y=LD2)) + geom_point(size = 3, aes(pch=Predicted_Returns, col=Predicted_Returns)) + 
-  stat_contour(aes(x = LD1, y = LD2, z = z), data = contour_data, size=1, color="black") +
+  geom_segment(aes(x = -1.28, y = 2.95, xend = -0.5133265, yend = -0.0658757), size=1.5) +
+  geom_segment(aes(x = -0.5133265, y = -0.0658757, xend = -0.55, yend = -2.9), size=1.5) +
+  geom_segment(aes(x = -0.5133265, y = -0.0658757, xend = 1, yend = 2.8), size=1.5) +
   ggtitle("Predicted Returns") + theme(plot.title = element_text(size=20), legend.title=element_blank())
 
+
 ggplot(scores, aes(x=LD1, y=LD2)) + geom_point(size = 3, aes(pch=True_Returns, col=True_Returns)) + 
-  stat_contour(aes(x = LD1, y = LD2, z = z), data = contour_data, size=1, color="black") +
+  geom_segment(aes(x = -1.28, y = 2.95, xend = -0.5133265, yend = -0.0658757), size=1.5) +
+  geom_segment(aes(x = -0.5133265, y = -0.0658757, xend = -0.55, yend = -2.9), size=1.5) +
+  geom_segment(aes(x = -0.5133265, y = -0.0658757, xend = 1, yend = 2.8), size=1.5) +
   ggtitle("True Returns") + theme(plot.title = element_text(size=20), legend.title=element_blank())
 ```
 
