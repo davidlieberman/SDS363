@@ -386,7 +386,7 @@ plot(x=seq(1,nrow(PCA_Data)), y=posterior.LDA, type="n", main="Posterior Probabi
 points(which(correct_or_not == TRUE), y=posterior.LDA[correct_or_not == TRUE], col=3, pch=16, cex=1.25)
 points(which(correct_or_not == FALSE), y=posterior.LDA[correct_or_not == FALSE], col=2, pch=15, cex=1.25)
 
-legend("topright",legend=c("Correct", "Incorrect"), col=c(3,2), pch=c(15,16))
+legend("topright",legend=c("Correct", "Incorrect"), col=c(3,2), pch=c(16,15))
 ```
 
 \\ NEED MORE ANALYSIS HERE
