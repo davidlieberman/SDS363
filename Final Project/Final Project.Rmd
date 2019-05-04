@@ -1,14 +1,14 @@
 ---
 title: 'S&DS363 Final Project'
 author: "Yavuz Ramiz Çolak, Ryo Tamaki, Liana Wang, David Lieberman"
-date: "March 27th, 2019"
+date: "May 4th, 2019"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 rm(list=ls())
-options(warn=-1)
+options(error=stop)
 library(knitr)
 library(ggplot2)
 library(ggfortify)
@@ -20,8 +20,8 @@ library(car)
 library(class)
 library(corrplot)
 library(PerformanceAnalytics)
-library(biotools)
 library(DiscriMiner)
+library(biotools)
 library(klaR)
 library(e1071)
 library(kernlab)
@@ -32,6 +32,7 @@ library(mvoutlier)
 library(ellipse)
 library(data.table)
 library(kableExtra)
+library(dplyr)
 ```
 
 IMPORTING OUR WORKING DATA
@@ -44,23 +45,34 @@ working_data
 
 ## Introduction, Design and Primary Questions
 
-### PLEASE EDIT MY WRITING HERE -- ADD TO THE INTRO, MY KNOWLEDGE OF ECON IS LIMITED
-Our dataset follows S&P500 companies with 16 different variables quantifying their performance on the New York Stock Exchange as of 2017-12-31 (obtained via the Quandl API). Each row is a given a company, with column metrics ranging from Gross Profit and ROE, to Assets and Liabilities. **This report intends to identify various paterns within the data to predict {...}** In particular, we will use the following statistical techniques:
+Our dataset follows S&P500 companies with 16 different variables quantifying their performance on the New York Stock Exchange as of 2017-12-31 (obtained via the Quandl API). Each row represents a company's, with column metrics ranging from Gross Profit and Return on Equity (ROE), to Assets and Liabilities. In this report, we want to answer two questions. Firstly, we want to measure the predictive ability of a given company's key financial metrics regarding the stock price performance between from 2017-12-31 to 2018-12-31. Secondly, we want to see whether we can cluster companies using the given financial variables, and use these clusters in our stock performance prediction. In answering these questions, we will use four statistical techniques:
 
---Which performance metrics tend to vary greatly between stocks? Principal Component Analysis will yield a few uncorrelated principal components in the directions of greatest variance. This will allow us to see which performance metrics tend to correlate with one another (their weights within principal components), and reduce the overall dimensionality and effectively eliminate any correlation between variables to avoid any bias that would be introduced by multicollinearity.
+Firstly, we will conduct Principal Component Analysis (PCA). In this analysis, we will try to see which performance metrics tend to vary greatly between stocks. Our PCA will yield a few uncorrelated principal components in the directions of greatest variance. This will allow us to see which performance metrics tend to correlate with one another (their weights within principal components), and reduce the overall dimensionality and effectively eliminate any correlation between variables to avoid any bias that would be introduced by multicollinearity.
 
---Are there particular performance metrics that can be used to decern which Sector a stock belongs to? Discriminant Analysis will allow us to see which principal components (and by extension the performance metrics contained in their loading coefficients) are most important for discriminanting between companies that did or did not outperform the SP500 during that same timeframe.
+Secondly, we will use Discriminant Analysis (DA). This method will allow us to see which principal components (and by extension the performance metrics contained in their loading coefficients) are most important for discriminanting between companies that did or did not outperform the SP500 during that same timeframe.
 
---THIRD THING
 
-### PLEASE TALK MORE ABOUT WHAT ECON VARIABLES MEAN
-## Data
+Thirdly, we will use Cluster Analysis. By using this method, we will investigate if there are  particular performance metrics that can be used to decern which Sector a stock belongs to. We will then interpret the results of our cluster analysis and talk about the predictive ability of each clusters for stock performance.
 
-Our dataset has:
+Lastly, to supplement our Cluster Analysis, we will use MANOVA. In this section, we will try to see the effects of sectors on the financial ratios we used in predicting stock price performance. 
 
---Categorical Variables (3): 'Ticker Symbol,' 'S&P500 Sector,' and 'Returns' (how much did the stock price percent change with respect to the S&P500 percent change within the same timeframe?)
+Before starting our analysis, we want to tell more about the data we are using. Our dataset has both categorical and continuous variables. Categorical Variables (3) include 'Ticker Symbol,' 'S&P500 Sector,' and 'Returns' (how much did the stock price percent change with respect to the S&P500 percent change within the same timeframe?). Continuous Variables (13) include mainly key financial ratios. The reason we preferred using ratios is that we wanted to have variables that are comparable across companies. Eventually, continuous variables we used were: 'Cash&Equivalents/Liability', 'Equity/Assets', 'EBIT/EV', 'EV/EBITDA', 'EBITDA Margin', 'Gross Margin', 'Net Margin', 'ROA (Return on Asset)', 'ROE(Return on Equity)', 'ROIC (Return on Invected Capital)', 'ROS (Return on Sales)', EV (Entreprise Value) and 'YoY change in Stock Price'.
 
---Continuous Variables (13): ...
+For reference, we also provide a short description of the main variables we are using: 
+
+- Cash&Equivalents/Liability: Cash & Equivalents refer to a company's assets that are cash or can be converted into cash immediately. Liabilities are a company's legal financial debts or obligations. 
+- EBIT/EV: EBIT refers to Earnings Before Interest and Tax, and EV refers to the Enterprise Value of a company. Enterprise Value can be summarized as the measure of a company's total value. More precisely, Enterprise Value is Market Capitalization + Total Debt - Cash & Cash Equivalents of a company. So, as a ratio, EBIT/EV measures a companies pre-tax earning yield. 
+- EV/EBITDA: We defined EV above. EBITDA is Earnings Before Interest Tax Depreciation and Amortization. EV/EBITDA is seen as the enterprise multiple, and used to determine whether a company is overvalued, undervalued or fairly valued.
+- EBITDA Margin: This ratio is calculated as EBITDA/Revenue of the company. It helps measure a company's operating profitability as a percentage of the total revenue. 
+- Gross Margin: This ratio is calculated as Gross Profit/Revenue. Gross profit is defined as  total revenue minus the cost of goods sold (or costs of services provided).
+- Net Margin: This ratio is calcualted as Net Income/Revenue. Net Income is equal to Sales minus [Cost of Goods Sold, SG&A (Selling, General and Administrative Cost), Operating Expenses, Depreciation, Other Expenses, Taxes and Interest].
+- ROA: ROA is Return on Assets and it is calculated as Net Income / Total Value of a Company's Assets. 
+- ROE: ROE is Return on Equity and it is calculated as Net Income / Total Equity of a Company (also known as Shareholder's Equity).
+- ROIC: ROIC is Return on Invested Capital and it is calculated by Net Operating Profit After Tax divided by Invested Capital.
+- ROS: ROS is Return on Sales and it is calculated as Operating Profit / Net Sales. Operating Profit is also known as EBIT--Earnings Before Interest and Tax.
+
+
+## Studying our Data Set, Transformations 
 
 ```{r}
 QQPlot <- function(x, na.rm = TRUE){
@@ -75,8 +87,8 @@ QQPlot <- function(x, na.rm = TRUE){
 }
 ```
 
-
 First, let's take a look at the data and make quantile-quantile plots for each performance metric to see if each variable is approximately univariate Normal.
+
 ```{r}
 kable(working_data[1:10,]) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed"), font_size = 6)
 QQPlot(working_data[,-c(1:2,14:16)])
@@ -88,16 +100,12 @@ Several of these variables seem to deviate substantially from univariate Normali
 TRANSFORM NUMERIC DATA AND REMOVE OUTLIERS
 ```{r, echo = TRUE, warning=FALSE}
 data_transformed <- working_data[,-c(1:2,14:16)]
-
 data_transformed$cashneq_liabilities <- log(data_transformed$cashneq_liabilities)
-
 which(is.infinite(as.matrix(data_transformed)) == TRUE)
 which(is.na(as.matrix(data_transformed)) == TRUE)
-
 outliers <- as.vector(which(pcout(data_transformed, makeplot = FALSE)$wfinal01 == 0))
 working_data <- working_data[-outliers,]
 data_transformed <- data_transformed[-outliers,]
-
 data_transformed
 ```
 
@@ -157,9 +165,7 @@ sorted_correlations <- correlation_vector[order(-abs(correlation_vector))][c(FAL
 head(sorted_correlations)
 ```
 
-Nice, we have some highly correlated variables. PCA will work well for our data.
-
-
+We observe that we have some highly correlated variables. PCA will work well for our data.
 
 Here's a more graphical representation of the correlation matrix that was created above.
 ```{r}
@@ -167,7 +173,6 @@ new_cor <- as.matrix(correlation_matrix)
 for (i in 1:ncol(new_cor)){
   new_cor[i,i] <- 0
 }
-
 corrplot(new_cor, method = "color", tl.cex=0.6)
 ```
 
@@ -193,29 +198,29 @@ kable(loadings) %>% kable_styling(bootstrap_options = c("striped", "hover", "con
 
 Looking at the loading coefficients for the first three principal components ("major contributor":= abs(loading coefficient) > 0.3):
 
-\\ NEED MORE ANALYSIS HERE
+--First Principal Component Major Contributors: ebitdamargin (-0.486), grossmargin (-0.415), netmargin (-0.353), ros (-0.463).
 
---First Principal Component Major Contributors: ebitdamargin (-0.486), grossmargin (-0.415), netmargin (-0.353), ros (-0.463)
+It seems that in this component we get variables that are focused on revenue and primarily costs of goods sold. All four of these, Net Margin, EBITDA Margin, Gross Margin and Return on Sales are primarly dependent on revenue, and strong revenue drives these ratios up. Similarly, these ratios are also collectively dependent on cost of goods sold--low cost of goods sold help drive these ratios up. 
 
-*It seems that all of these variables deal with ...* 
+--Second Principal Component Major Contributors: netmargin (0.381), roa (0.514), roe (0.488), roic (0.359). 
 
-
---Second Principal Component Major Contributors: netmargin (0.381), roa (0.514), roe (0.488), roic (0.359)
-
-*It seems that all of these variables deal with ...* 
+These four variables are trying to measure return on investments. ROA (Return on Assets), ROE (Return on Equity), ROIC (Return on Invested Capital) and Net Margin all have net income as their numerator. Therefore, these ratios are high when net income is high, and not so significant when net income is low. It is expected that these variables be grouped together in PCA. 
 
 
---Third Principal Component Major Contributors: equality_assets (0.434), ebit_ev (-0.541), ev_ebitda (0.574)
+--Third Principal Component Major Contributors: equity_assets (0.434), ebit_ev (-0.541), ev_ebitda (0.574). 
 
-*It seems that all of these variables deal with ...*
-
+These three variable all use capital structure as their numerator or denominator. Enterprise Value is Debt + Equity - Cash of the company, and these variables try to see the relation between Before Interest and Tax earnings of the company and its capital structure (Equity and Debt). So this principal component captures unique information about the Debt and Equity structure of the companies, and it makes sense that these three variables are grouped together. Also note that Equity/Assets and EV/EBITDA are positive while EBIT/EV are negative, this can be explained by the fact that in Equity/Assets and EV/EBITDA financial variables concerning the capital structure are in the numerator (i.e. Equity and Enterprise Value), and in EBIT/EV capital structure term is in the denominator (i.e. Enterprise Value).
 
 ```{r}
 screeplot(pc2,type="lines",col="red",lwd=2,pch=19,cex=1.2,main="Scree Plot")
 ```
+
+
+**QUESTION: IS IT 3 or 4????**
+
 As we can see from the scree plot above, "cutting above the first elbow" leaves us with three principal components and is in good agreement with the "eigenvalues greater than one" findings above.
 
-\\ NEED MORE ANALYSIS HERE
+These 3 Principal Components capture in order: Revenue & Cost Structure, Net Income and Return levels, and Capital Structure and Pre-Interes/Tax Earnings relation for the companies.  
 
 ```{r}
 ciscoreplot<-function(x,comps,namevec){
@@ -239,19 +244,25 @@ ciscoreplot<-function(x,comps,namevec){
 }
 ```
 
+
+INCLUDE INDUSTRY COLORING -- we would not call the outliers. A few on the edges, we would expect some anyways. Forget the confidence ellipse, but let's just color between the sectors.
+
+CANONICAL Correlation --> Double Principal Components: What combination of these variables is correlated with these variables. 
+
 ```{r}
 ciscoreplot(pc1,c(1,2), working_data$ticker)
-ciscoreplot(pc1,c(1,3), working_data$ticker)
-ciscoreplot(pc1,c(2,3), working_data$ticker)
 ```
 
 \\ NEED MORE ANALYSIS HERE
 
+```{r}
+ciscoreplot(pc1,c(1,3), working_data$ticker)
+```
+
+\\ NEED MORE ANALYSIS HERE
 
 ```{r}
-biplot(pc2,choices=c(1,2),pc.biplot=T)
-biplot(pc2,choices=c(1,3),pc.biplot=T)
-biplot(pc2,choices=c(2,3),pc.biplot=T)
+ciscoreplot(pc1,c(2,3), working_data$ticker)
 ```
 
 \\ NEED MORE ANALYSIS HERE
@@ -260,14 +271,16 @@ biplot(pc2,choices=c(2,3),pc.biplot=T)
 PCA_Data <- pc2$x[,c(1:3)]
 Sectors <- droplevels(working_data$sector)
 Returns <- working_data$returns
-
 PCA_Data <- data.frame(Returns, Sectors, PCA_Data)
 PCA_Data
 ```
 
 ## Section 2: Discriminant Analysis
 
-Let's take a look at boxplots of each stock's principal component values, grouped by returns. "High" means the percent change of the stock price was more positive than the percent change of the SP500 between December 31st, 2017 and December 31st, 2018. "Low" means the opposite. We will be using the three principal components constructed above as our new working data, as they capture much of the variance of our original 11 continuous explanatory variables in only 3 dimensions and have the benefit of being uncorrelated.
+MAKE SURE THAT WE DONT USE YoY again
+
+Let's take a look at boxplots of each stock's principal component values, grouped by returns. "High" means the percent change of the stock price was more positive than the percent change of the SP500 between December 31st, 2017 and December 31st, 2018. "Low" means the opposite. We will be using the three principal components constructed above as our new working data, as they capture much of the variance of our original 11 continuous explanatory variables in only 3 dimensions and have the benefit of being uncorrelated (? make sure this applies!!!!!????).
+
 ```{r}
 par(mar=c(3,5,2,2))
 boxplot(PC1 ~ Returns, data=PCA_Data, horizontal = T, main="PC1 by Returns", las=2)
@@ -275,12 +288,13 @@ boxplot(PC2 ~ Returns, data=PCA_Data, horizontal = T, main="PC2 by Returns", las
 boxplot(PC3 ~ Returns, data=PCA_Data, horizontal = T, main="PC3 by Returns", las=2)
 ```
 
-\\ NEED MORE ANALYSIS HERE
+In comparing the PCA values for the mediocre, high, and low return stocks for the first three dimensions, we notice that the distribution of PCA values by returns appears largely symmetric. It should be noted that there is some noticable skewness for the mediocre returns grouping in the second principle component and in the high returns grouping for the third principle component. With this symmetry, we note that the our boxplots of the principle components suggest an approximately normal distribution for each group.
 
 ```{r}
 plot(PCA_Data[,-c(1,2)], col = 2*(as.numeric(PCA_Data$Returns)), pch = as.numeric(PCA_Data$Returns)+15, cex=1.2)
 ```
-Inspection of the principal components' projected scatters appears promising. All three groups (each has a different shape and color) seem to have a similar random scatter and "covariant footprint." In other words, it is a strong possibility that the data is multivariate Normal within groups, and the group covariance matricies are not significantly different from one another.
+
+An inspection of the principal components' projected scatters appears promising. All three groups (each has a different shape and color) seem to have a similar random scatter and "covariance footprint." In other words, it is a strong possibility that the data is multivariate Normal within groups, and the group covariance matricies are not significantly different from one another.
 
 ```{r}
 CSQPlot(PCA_Data[which(PCA_Data$Returns == "Mediocre"),][-c(1,2)], label="Mediocre")
@@ -294,11 +308,9 @@ Indeed, when the companies are grouped by their returns (either High, Low, or Me
 print("Covariance Matrix for Mediocre")
 cov(PCA_Data[PCA_Data$Returns == "Mediocre", 3:5])
 cat(c("log-determinant", log(det(cov(PCA_Data[PCA_Data$Returns == "Mediocre", 3:5]))), "\n\n"))
-
 print("Covariance Matrix for High")
 cov(PCA_Data[PCA_Data$Returns == "High", 3:5])
 cat(c("log-determinant", log(det(cov(PCA_Data[PCA_Data$Returns == "High", 3:5]))), "\n\n"))
-
 print("Covariance Matrix for Low")
 cov(PCA_Data[PCA_Data$Returns == "Low", 3:5])
 cat(c("log-determinant", log(det(cov(PCA_Data[PCA_Data$Returns == "Low", 3:5]))), "\n\n"))
@@ -306,23 +318,19 @@ cat(c("log-determinant", log(det(cov(PCA_Data[PCA_Data$Returns == "Low", 3:5])))
 boxM(PCA_Data[,c("PC1","PC2","PC3")], PCA_Data$Returns)
 ```
 
-\\ NEED MORE ANALYSIS HERE
+In computing the covariance matrices, by visual inspection, we note that the covariance matrices seem reasonably similar across groups. That the covariance matrices are similar is supported by the p-value (0.0629) of the Box-M test, suggesting that there is no statistically significant difference between each group's covariance matrix. As there are no statistically significant differences in covariance matrices, our data are suitable for Linear Discriminant Analysis (LDA).
 
 STEPWISE LDA
 ```{r}
 paste("PC1 correlation with percent_change:", cor(working_data$percent_change, PCA_Data$PC1))
 paste("PC2 correlation with percent_change:", cor(working_data$percent_change, PCA_Data$PC2))
 paste("PC3 correlation with percent_change:", cor(working_data$percent_change, PCA_Data$PC3)) #PC3 Biggest
-
 data.LDA <- as.matrix(PCA_Data[,-c(1,2)]) # the data 
 group.LDA <- as.factor(PCA_Data$Returns) # the classes 
-
 # starting with PC3 because it has the highest pearson correlation with percent change
-
 stepwise.lda <- stepclass(data.LDA, group.LDA, "lda", start.vars = "PC3")
 stepwise.lda
 plot(stepwise.lda)
-
 # LMAO THIS WAS GARBAGE
 ```
 
@@ -332,41 +340,35 @@ LDA, no cross-validation
 ```{r}
 LDA <- lda(Returns~PC1+PC2+PC3, PCA_Data, CV=FALSE) 
 confusion <- table(PCA_Data$Returns, predict(LDA)$class)
-
 print(confusion)
 sum(diag(prop.table(confusion)))
 ```
 
-\\ NEED MORE ANALYSIS HERE
+We compute our classification results in the confusion matrix above to evaluate how accurately classification via LDA (without cross-validation) worked for our data. We find that the accuracy is lacking with an accuracy rate of 44.2%, which is slightly better than guessing.
 
 QDA, with cross-validation
 ```{r}
 cv.LDA <- lda(Returns~PC1+PC2+PC3, PCA_Data, CV=TRUE) 
 confusion <- table(PCA_Data$Returns, cv.LDA$class)
-
 print(confusion)
 sum(diag(prop.table(confusion)))
 ```
 
-\\ NEED MORE ANALYSIS HERE
+For completeness, we also run quadratic discrimant analysis, even though as we noted above, our covariance matrices are similar between groups as determined by the Box-M test. In the confusion matrix above computed for the QDA with Cross-Validation classification, we find that the accuracy rate is lower at 41.2%. Again, this figure is marginally better than guessing, and so we again find that the accuracy is lacking. 
 
 ```{r}
 partimat(Returns~PC1+PC2+PC3, data=PCA_Data, method="lda")
 ```
 
-\\ NEED MORE ANALYSIS HERE
-
+We plot the classification via LDA results in two dimensional space to better visualise the accuracy of the classification method. In plotting the classifications on two dimensions between PC1, PC2, and PC3, we find that in each case, the error rate is marginally better than guessing as the error rates are between 0.549 and 0.585.
 
 ```{r}
 scores <- data.frame(Predicted_Returns=predict(LDA)$class, predict(LDA)$x, True_Returns=factor(PCA_Data$Returns))
-
 ggplot(scores, aes(x=LD1, y=LD2)) + geom_point(size = 3, aes(pch=Predicted_Returns, col=Predicted_Returns)) + 
   geom_segment(aes(x = -1.28, y = 2.95, xend = -0.5133265, yend = -0.0658757), size=1.5) +
   geom_segment(aes(x = -0.5133265, y = -0.0658757, xend = -0.55, yend = -2.9), size=1.5) +
   geom_segment(aes(x = -0.5133265, y = -0.0658757, xend = 1, yend = 2.8), size=1.5) +
   ggtitle("Predicted Returns") + theme(plot.title = element_text(size=20), legend.title=element_blank())
-
-
 ggplot(scores, aes(x=LD1, y=LD2)) + geom_point(size = 3, aes(pch=True_Returns, col=True_Returns)) + 
   geom_segment(aes(x = -1.28, y = 2.95, xend = -0.5133265, yend = -0.0658757), size=1.5) +
   geom_segment(aes(x = -0.5133265, y = -0.0658757, xend = -0.55, yend = -2.9), size=1.5) +
@@ -374,22 +376,18 @@ ggplot(scores, aes(x=LD1, y=LD2)) + geom_point(size = 3, aes(pch=True_Returns, c
   ggtitle("True Returns") + theme(plot.title = element_text(size=20), legend.title=element_blank())
 ```
 
+We again plot the LDA classification results, through ggplot for better aesthetics, that again illustrates the stark contrast between predicted and actual returns. The black lines delineate the decision rules to classify the data points for LDA with respect to the linear discriminant dimensions. In observing the true returns figure, we recognise that LDA does not discriminate high, low, and mediocre stock returns accurately.
 
 ```{r}
 posterior.LDA <- apply(predict(LDA)$posterior, 1, max)
-
 correct_or_not <- as.factor(predict(LDA)$class == PCA_Data$Returns)
-
 plot(x=seq(1,nrow(PCA_Data)), y=posterior.LDA, type="n", main="Posterior Probability of Predicted Membership Colored by Accuracy",
      xlab="Index",ylab="Posterior Probability")
-
 points(which(correct_or_not == TRUE), y=posterior.LDA[correct_or_not == TRUE], col=3, pch=16, cex=1.25)
 points(which(correct_or_not == FALSE), y=posterior.LDA[correct_or_not == FALSE], col=2, pch=15, cex=1.25)
-
 legend("topright",legend=c("Correct", "Incorrect"), col=c(3,2), pch=c(16,15))
 ```
-
-\\ NEED MORE ANALYSIS HERE
+Looking at the posterior probability coloured by accuracy, we note that there appears to be no discernable relationship between higher posterior probability and accuracy. If DA were effective, we would expect that as the posterior probability-- which we can understand here as 'confidence' in the discrimination-- increases, the accuracy would similarly increase. As the plot above shows, however, that relation doesn't hold.
 
 Nonparametric k-nearest neighbor (leave-one-out)
 ```{r}
@@ -403,26 +401,22 @@ for (j in 1:20) {
     results[i,j] <- truth == knn_prediction
   }
 }
-
 best_k <- which.max(colMeans(results))
 best_k
 success_rate <- colMeans(results)[best_k]
 success_rate
 ```
+
 Leaving out one point, and predicting its group using the k-nearest neighbor method, and repeating this for all 335 points in our dataset, this method predicts the group with approximately 46.7% success rate.
 
 Support-Vector Machine, ML binary classification method, with cross-validation
 ```{r}
 svm_data <- PCA_Data[,-2]
-
 tune.out <- tune(svm, Returns~. , data=svm_data, kernel = "radial", cross = 30, scale = TRUE, ranges = list(cost = c(0.1,1,10), gamma = c(0.5,1,2)))
 bestmod <- tune.out$best.model
-
 bestmod$accuracies
 cat("\n")
 bestmod$tot.accuracy
-
-
 # percent_correct <- c(); misclass <- matrix(rep(0, 9), nrow = 3, ncol = 3)
 # for (i in 1:30){
 #   withold <- as.vector(sample.int(nrow(svm_data), 30))
@@ -446,18 +440,32 @@ bestmod$tot.accuracy
 ```{r}
 svm_data$Returns <- ifelse(working_data$percent_change > (2506.85 - 2673.61)/2506.85, "High", "Low")
 ## ONLY TAKES BINARY HIGH/LOW
-
-
 plot(ksvm(Returns~PC1+PC2, data=svm_data))
 plot(ksvm(Returns~PC1+PC3, data=svm_data))
 plot(ksvm(Returns~PC2+PC3, data=svm_data))
 ```
 
-\\ NEED MORE ANALYSIS HERE (I'll write this part)
+\\ NEED MORE ANALYSIS HERE ***[DAVID WILL WRITE THIS PART!!!]***
 
 ## Section 3: Cluster Analysis
 
-Analyzing the question "will cutting at 10 clusters roughly group the companies into their respective sectors?"
+There are 10 Unique Industries in our dataset! 
+
+```{r}
+par(mar=c(5, 8, 3, 3))
+barplot(table(working_data$sector), 
+        col = "darkgoldenrod2",
+        border = "white", space = .05,
+        horiz=TRUE, las = 1,
+        xlab = "Number of companies/stocks", xlim = c(0,60),
+        main = "Number of stocks per unique industry", 
+        names.arg = c("Discretionary", "Staples", "Energy", "Financials", "Healthcare", "Industrials", "IT", "Materials", "Real estate", "Utilities"),
+        cex.names = .8, font.lab=2)
+title(ylab = "Sectors", line = 5)
+
+```
+
+In this section, we will try to answer the following question: if we choose to cut our data into 10 clusters, will the companies then be grouped roughly into their respective sectors?"
 
 ```{r}
 print("Summary Statistics for PC1")
@@ -465,38 +473,35 @@ paste("mean:", mean(PCA_Data$PC1))
 paste("sd:", sd(PCA_Data$PC1))
 invisible(qqPlot(PCA_Data$PC1))
 cat("\n")
-
 print("Summary Statistics for PC2")
 paste("mean:", mean(PCA_Data$PC2))
 paste("sd:", sd(PCA_Data$PC2))
 invisible(qqPlot(PCA_Data$PC2))
 cat("\n")
-
 print("Summary Statistics for PC3")
 paste("mean:", mean(PCA_Data$PC3))
 paste("sd:", sd(PCA_Data$PC3))
 invisible(qqPlot(PCA_Data$PC3))
 cat("\n")
 ```
+
 The summary statistics show that the PCA components appear to have approximately equal means and standard deviations and appear to be approximately univariate Normal, so we won't restandardize the data.
 
 ```{r}
 data_dist <- dist(PCA_Data[,-c(1,2)], method = "euclidean")
-data_clust <- hclust(data_dist, method = "ward.D2")
-
-plot(data_clust, labels = FALSE, xlab="",ylab="Distance", main="Clustering for Stocks", cex = .5)
+data_clust <- hclust(data_dist, method = "complete")
+plot(data_clust, labels = FALSE, xlab="Cluster groups",ylab="Distance", main="Clustering for Stocks", cex = .5)
 rect.hclust(data_clust, k=10) #10 Sectors
 ```
 
-\\ NEED MORE ANALYSIS HERE
+This graph gives us a good overview of the data clusters, but we want to zoom in and see what each cluster holds. 
+
 
 ```{r}
 cluster_groupings_companies <- as.numeric(cutree(data_clust, k=10))
-
 cluster_dataframe <- data.frame(working_data[,c(1,2)],cluster_groupings_companies)
 cluster_dataframe <- arrange(cluster_dataframe, factor(cluster_groupings_companies))
 clusters <- cluster_dataframe %>% group_split(cluster_groupings_companies)
-
 membership_proportion <- c(); cluster_analytics <- list(); classifications <- c()
 for (i in 1:10){
   counts <- table(clusters[[i]]$sector)
@@ -508,15 +513,51 @@ for (i in 1:10){
   classifications <- c(classifications, new_classifications)
 }
 classifications <- classifications[order(names(classifications))]
-
 cluster_analytics
-
 #classifications
 cat("\n")
 mean(classifications)
 ```
 
-\\ NEED MORE ANALYSIS HERE
+We tested a couple of different ways to perform cluster analysis, including different distance ("euclidean" vs. "manhattan") and linkage/clustering methods ("single", "complete," and "average"). Using the code above, we can determine what proportion of each cluster is made up of stocks/companies from the highest represented industry, which we call the "membership rate." For example, if in cluster 1 the largest proportion of stocks belong to Industry A, the membership rate would be that proportion. 
+
+We decided to use the distance-linkage combination which maximized the mean membership rate across all clusters, while also giving us the most distinct clusters. This turns out to be using *"Euclidean"* distance and *"complete"* linkages, which makes sense: "complete" linkages use the maximum distance between clusters and tend to make trees with distinct clusters, while also being less sensitive to noisy data--which is good for us, given that we have 335 stocks!--and Euclidean distance is a common method to use, especially as we have no reason to suggest that Manhattan would be better for the similarity or dissimilarity between stocks. This gives us an average membership rate of .36418. Listing our clusters by the industry most represented in each with the proportion of represented gives us the following results, as shown in this table: 
+
+```{r}
+industries <- c("Industrials", "Discretionary", "Healthcare", "Healthcare", "Utilities", "Financials", "Discretionary", "Financials", "Real Estate", "Financials" )
+rates <- c("0.2759", "0.2237", "0.3478", "0.3846", "0.5", "0.7667", "0.439", "0.2069", "0.8667", "0.1667")
+
+cluster_table <- data.frame(rates, industries)
+cluster_table
+```
+
+To understand the threads tying each cluster together--i.e. what made the stocks in them similar--we ultimately had to go beyond simply using the membership rate of the industries. Although we cut our data into 10 clusters, they were clearly not grouped into their industry categorization: consumer discretionary and healthcare each make up the greatest proportion of two clusters; financials makes up the biggest proportion of three clusters. We decided to look at the stock tickers and the kinds of companies represented in each cluster in order to better understand the patterns. 
+
+Ultimately, we can see that there are factors which differentiate each cluster by industry--just not the broad, categorized industries that the data had been pre-sorted into. The clusters instead gave us a more fine-tuned picture of what industry each company belonged to. 
+
+**Cluster 1:** While "Industrials" only make up 27.59% of the stocks in this cluster, looking closely at the tickers and company descriptions shows that many "industrial" companies like AMETEK (AME), Fortive (FTV), and Rockwell (ROK) focus on industrial technologies--such as information technology or industrial automation. Meanwhile, many of the remaining non-industrial companies are also technological: we can see that Apple (AAPL), and Microsoft (MSFT) are among them, tech giants likely with industrial applications or similar supply chains. Thus, if we were to rename this cluster, we might call if industrial technology. 
+
+**Clusters 2 and 7:** Both of these clusters show "Consumer Discretionary" to be the highest proportion of stock tickers. Doing closer analysis of which stocks are "discretionary" and which are not within each cluster allows us to better determine the nature of the clusters. In cluster 2, most stocks--regardless of their classification--are concerned with transportation and department stores that mainly apply to the home: for example, Advance Auto Parts (AAP), LKQ corporation (LKQ) and Genuine Parts Company (GPC) all have to do with automotive parts, while Lennar Corporation (LEN) deals in home construction and upgrading. Various other companies work run cruise lines, manufacture shipping and motorcycle parts, or distribute home products. Thus, we can see that cluster 2 focuses on consumer discretionary spending which deals with **home and travel.** 
+
+For cluster 7, the stocks much more clearly represent companies which run wholesale and department stores, which generally focus on personal products and clothing. For example, Best Buy (BBY), Dollar General (DG), Dollar Tree (DLTR), Gap (GPS), and Macy's Inc (M) are all companies which sell **everyday consumer products**--for household and personal use. While these products all fit under discretionary spending as well, they are clearly a different tier of product and an industry which caters to different consumer desires than transportation and homes. (If we had more information about consumption habits in the US, it would be interesting to look further into the difference between these two clusters, since it seems that middle- and high- income families would be much more likely to spend greater discretionary amounts on home and travel, whereas lower-income families would be more likely to shop at places like Dollar General.) 
+
+**Clusters 3 and 4:** Both these clusters are classified as "Healthcare" although the proportion is low in each one. Zooming closer and looking at the individual stocks again gives us a breakdown of the differences between these two clusters. In cluster 3, we can see that most of the companies--like Abbott Laboratories (ABT) and Perrigo (PRGO) are pharmaceutical or biotech companies, which manufacture drugs, OTC medication, vitamins, and supplements for patient usage. Thus, they operate in similar markets and probably also use similar supply chains, which might lead us to think of this cluster as a distinct segment of the healthcare sector, dominated by pharmaceuticals. 
+
+Cluster 4, by contrast, is mostly filled with companies that produce medical instruments and health equipment, such as Stryker (SYK)-which specializes in what is needed for trauma surgeries, as well as Medtronic (MDT) and Zimmer Biomet (ZBH)--which are both medical device companies. Some other companies that are not classified as "healthcare" may show similarities to the production of devices and parts which these med-product companies engage in: Roper Technologies (ROP), for instance, is a diversified giant which makes engineered products and parts, Analog Devices (ADI) makes semiconductors, and Akamai Tech (AKAM) provides software. We can see a difference between cluster 3 being industries that have to deal with **chemical production**, whereas cluster 4 seems more **mechanical and engineered parts manufacturing.**
+
+**Cluster 5:** This cluster appears relatively accurate - half of the stocks are classified as "utilities", and the ones that are not tend to be insurance companies, such as Prudential (PRU), American Express (AXP), and Lincoln Management (LMC)--companies that also work with the everyday American consumer (we can think of them as service-oriented companies for which consumers are most likely to get monthly billed expenses, so perhaps they have similar markets and cost structures). It is also likely that many of these companies must cross-coordinate in order to respond to consumer crises--think, for example, in the aftermath of a natural disaster: utilities, insurance, and credit companies must often cooperate to respond to people's immediate needs. Thus, while other industries are captured within this cluster, it is not difficult to see the similarities between the sectors in which they operate. 
+
+**Cluster 6, 8, and 10:** These three clusters are all labeled as dominated by "financial" industry companies--which would appear discouraging at first. However, "finance" is a diverse industry marked by firms operating in very different kinds of financial practices. The stock tickers differentiate this as well. 
+
+Cluster 6 has the highest percentage of stocks classified as "financial," and it is not difficult to see why: most of the stocks in this cluster are **large banks or financial institutions** that move around large blocks of money, such as BlackRock (BLK) and Bank of America (BAC). The ones which are non-financial still engage in substantial financial activity: Ventas (VTR) for example, is not classified as financial because it is a REIT (Real Estate Investment Trust)--thus it is probably labeled real estate--but its activities and the way it behaves as a company is financial in nature. 
+
+Cluster 8 has a lower membership rate: here, the financial companies are made up of **multistrat investment management** firms, which means that through diverse investments, they engage in several different activities in the market. This means that their performance is likely dependent upon and correlated with the performance of a large swath of other key players in different industries across the market, which we can identify in the remainder stocks which are primarily nonfinancial. 
+
+Likewise, cluster 10 has the lowest membership rate for financials, and we can see that it is because these financial institutions which primarily sell **insurance** as a financial product (a different product from the home insurance tied together with utilities in a previous cluster).For example, Progressive Corp (PGR) is a conglomerate insurance company. Note that this is also a relatively small cluster.  
+
+**Cluster 9:** The last cluster is real estate - which is relatively self-explanatory, and the cluster has the highest membership rate out of all the other clusters (86.67% of the stocks are directly classified as real estate). The stocks which are not classified as real estate still have activities concerned with the real estate/housing/mortgage market--for example, People's United Financial (PBCT) is not classified as "real estate", but likely fell into the cluster because of providing mortgages and other housing or real-estate related financial products which can cause these stocks' performances to be correlated. This is the most straightforward cluster which did match our original intention to have each cluster be an industry. 
+
+**At the end of cluster analysis, we get 10 clusters which did not match the original preassigned industries. However, we can draw out similar characteristics among the stocks to see that the clusters roughly describe: 1) industrial technology, 2) home and travel discretionary spending, 3) pharmaceutical and chemical production, 4) health equipment and other engineered products, 5) utilities and consumer credit, 6) large banks and financial institutions, 7) personal products discretionary spending, 8) multistrategy investment management firms, 9) real estate, and 10) insurance financial firms.**
 
 ## Section 4: MANOVA
 
@@ -528,6 +569,71 @@ boxplot(PC2 ~ Sectors, data=PCA_Data, horizontal = T, main="PC2 by Industry", la
 boxplot(PC3 ~ Sectors, data=PCA_Data, horizontal = T, main="PC3 by Industry", las=2)
 ```
 
+```{r}
+ggplot(PCA_Data, aes(x=PC1, y=PC2, col=as.integer(factor(Sectors)))) + geom_point(size = 3, aes(pch=18, col=factor(Sectors))) + scale_shape_identity() +
+  ggtitle("Companies by Sector in PC1 vs PC2 Space") + theme(plot.title = element_text(size=15), legend.title=element_blank())
+
+ggplot(PCA_Data, aes(x=PC1, y=PC3, col=as.integer(factor(Sectors)))) + geom_point(size = 3, aes(pch=18, col=factor(Sectors))) + scale_shape_identity() +
+  ggtitle("Companies by Sector in PC1 vs PC3 Space") + theme(plot.title = element_text(size=15), legend.title=element_blank())
+
+ggplot(PCA_Data, aes(x=PC2, y=PC3, col=as.integer(factor(Sectors)))) + geom_point(size = 3, aes(pch=18, col=factor(Sectors))) + scale_shape_identity() +
+  ggtitle("Companies by Sector in PC2 vs PC3 Space") + theme(plot.title = element_text(size=15), legend.title=element_blank())
+```
+
+```{r}
+ciscoreplot<-function(x,comps,namevec){
+  y1<-sqrt(5.99*(x$sdev[comps[1]]^2))
+  ymod<-y1-y1%%.05
+  y1vec<-c(-y1,seq(-ymod,ymod,by=0.05),y1)
+  y2vecpos<-sqrt((5.99-(y1vec^2)/x$sdev[comps[1]]^2)*x$sdev[comps[2]]^2)
+  y2vecneg<--sqrt((5.99-(y1vec^2)/x$sdev[comps[1]]^2)*x$sdev[comps[2]]^2)
+  y2vecpos[1]<-0
+  y2vecneg[1]<-0
+  y2vecpos[length(y2vecpos)]<-0
+  y2vecneg[length(y2vecneg)]<-0
+  plot(x$scores[,comps[1]],x$scores[,comps[2]],pch=19,col=unique(as.factor(Sectors)), cex=1.2,ylim=c(min(y2vecneg,x$scores[,comps[2]]),max(y2vecpos,x$scores[,comps[2]])),
+    main="PC Score Plot", xlab=paste("Scores for PC",comps[1],sep=" "), ylab=paste("Scores for PC",comps[2],sep=" "),
+    xlim=c(min(y1vec,x$scores[,comps[1]]),max(y1vec,x$scores[,comps[1]])))
+    lines(y1vec,y2vecpos,col="Red",lwd=2)
+    lines(y1vec,y2vecneg,col="Red",lwd=2)
+  legend("bottomleft", legend=unique(as.factor(Sectors)), col=unique(as.factor(Sectors)), pch=19, cex=.8)
+}
+```
+
+Colored by S&P500 industry
+```{r}
+ciscoreplot(pc1,c(1,2), PCA_Data$ticker)
+```
+
+Colored by Clustering
+```{r}
+ciscoreplot<-function(x,comps,namevec){
+  y1<-sqrt(5.99*(x$sdev[comps[1]]^2))
+  ymod<-y1-y1%%.05
+  y1vec<-c(-y1,seq(-ymod,ymod,by=0.05),y1)
+  y2vecpos<-sqrt((5.99-(y1vec^2)/x$sdev[comps[1]]^2)*x$sdev[comps[2]]^2)
+  y2vecneg<--sqrt((5.99-(y1vec^2)/x$sdev[comps[1]]^2)*x$sdev[comps[2]]^2)
+  y2vecpos[1]<-0
+  y2vecneg[1]<-0
+  y2vecpos[length(y2vecpos)]<-0
+  y2vecneg[length(y2vecneg)]<-0
+  plot(x$scores[,comps[1]],x$scores[,comps[2]],pch=19,col=as.factor(names(cluster_analytics)), cex=1.2,ylim=c(min(y2vecneg,x$scores[,comps[2]]),max(y2vecpos,x$scores[,comps[2]])),
+    main="PC Score Plot", xlab=paste("Scores for PC",comps[1],sep=" "), ylab=paste("Scores for PC",comps[2],sep=" "),
+    xlim=c(min(y1vec,x$scores[,comps[1]]),max(y1vec,x$scores[,comps[1]])))
+    lines(y1vec,y2vecpos,col="Red",lwd=2)
+    lines(y1vec,y2vecneg,col="Red",lwd=2)
+  legend("bottomleft", legend=unique(as.factor(names(cluster_analytics))), col=unique(as.factor(names(cluster_analytics))), pch=19, cex=.8)
+}
+```
+
+```{r}
+ciscoreplot(pc1,c(1,2), PCA_Data$ticker)
+```
+
+
+
+
+
 \\ NEED MORE ANALYSIS HERE
 
 ```{r}
@@ -536,11 +642,46 @@ for (name in unique(Sectors)){
 }
 ```
 
-\\ NEED MORE ANALYSIS HERE
+We see that the data is broadly multivariate normal in each industry! 
 
 ```{r}
-manova <- manova(as.matrix(PCA_Data[-c(1:2)])~factor(PCA_Data$Sectors))
-summary.manova(manova, test="Wilks")
+manova_sp500 <- manova(as.matrix(PCA_Data[-c(1:2)])~factor(PCA_Data$Sectors))
+summary.manova(manova_sp500, test="Wilks")
 ```
 
-\\ NEED MORE ANALYSIS HERE
+Here we see that we have a significant F value. With our MANOVA results, we conclude that sectors, which are our independent variables, affect the differences in key financial ratios and variables. Given that changes in key financial ratios can notably affect stock price performance, certain industries/sub-industries could also perhaps contribute to the positive/negative performance of a given stock at a given time period.
+
+Our Wilks Lambda is 0.3141. While we would like to ideally have a Wilks Lambda of 0, and achieve total discrimination across independent variables, given the imperfect differences across sectors, our Wilks Lambda is at an acceptabl level, contributing to the conclusion that the dependent financial ratios are notably different across sectors. But as said earlier, there is some variance that is not explained by independent variables. 
+
+Finally, we check to make sure residuals have a multivariate normal distribution (which we expect will be true based on normality in each group).
+
+```{r}
+CSQPlot(manova_sp500$residuals,label="Residuals from S&P500 Data MANOVA")
+```
+
+CONTRAST HERE between Financials and Healthcare
+
+```{r}
+source("https://raw.githubusercontent.com/davidlieberman/SDS363/master/PSet5/multicontrast.R")
+
+sorted <- order(PCA_Data$Sectors)
+unique(PCA_Data$Sectors[sorted])
+```
+
+```{r}
+multicontrast(c(0,0,0,1,-1,0,0,0,0,0), PCA_Data[sorted,3:5], PCA_Data$Sectors[sorted])
+```
+
+
+## Final Interpretations
+
+
+## Limitations & Further Research
+
+
+## Conclusion
+
+
+## Addendum
+
+
