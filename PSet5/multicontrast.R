@@ -49,5 +49,4 @@ multicontrast <- function(contrast, data, grouping){
   # Output
   out <- c(lambda, F.stat, df1, df2, p.value)
   names(out) <- c("Wilks", "approx.F", "df1", "df2", "p.value")
-  return(out)
-}
+  return(out) }
