@@ -1,8 +1,10 @@
 ---
-title: 'S&DS363 Final Project'
+title: "S&DS363 Final Project"
 author: "Yavuz Ramiz Çolak, Ryo Tamaki, Liana Wang, David Lieberman"
 date: "May 4th, 2019"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -91,6 +93,7 @@ First, let's take a look at the data and make quantile-quantile plots for each p
 kable(working_data[1:10,]) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed"), font_size = 6)
 QQPlot(working_data[,-c(1:2,14:16)])
 ```
+
 Several of these variables seem to deviate from univariate Normality. Applying a log transformation will likely help. However, there are several subtleties. Many variables take on negative values, however translating our data by a constant positive factor would disrupt our ratio quantities. Therefore, although it might be helpful to transform, by in large, our variables seem approximately Normal enough that we will leave them unchanged, except for cashneq_liabilities which is strictly positive across all our data so we will take its log. Additionally, there are many outliers that would likely disrupt our calculations later on. Therefore, we make the difficult decision to take them out early on, and proceed with our analysis without them. We are left with 335 companies.
 
 
@@ -109,6 +112,7 @@ head(data_transformed)
 ```{r}
 QQPlot(data_transformed)
 ```
+
 After log transforming cashneq_liabilities and removing outliers, the variables all appear to be approximately univariate Normal (save for a few remaining pesky outliers).
 ```{r}
 CSQPlot<-function(vars,label="Chi-Square Quantile Plot"){
@@ -138,6 +142,7 @@ Now, let's see if our data is approximately multivariate Normal using a chi-squa
 ```{r}
 CSQPlot(data_transformed, label="data_transformed")
 ```
+
 As we can see, our data is very far from multivariate Normal -- nearly all of the data lie outside the 95% confidence limits on the chi-square quantile-quantile plot.
 
 
@@ -168,7 +173,9 @@ for (i in 1:ncol(new_cor)){
 }
 corrplot(new_cor, method = "color", tl.cex=0.6)
 ```
+
 Below are scatterplots of variables we are tracking paired and projected into 2D space. We note that there is no severe clumping or drastic outliers skewing our data; in fact, several variables are noticeably linearly correlated. Therefore PCA will work well for our data and is advisable because as it stands, our data has a substantial degree of multicollinearity.
+
 ```{r}
 chart.Correlation(data_transformed, histogram=FALSE)
 ```
@@ -207,6 +214,7 @@ Looking at the loading coefficients for the first three principal components ("m
 ```{r}
 screeplot(pc2,type="lines",col="red",lwd=2,pch=19,cex=1.2,main="Scree Plot")
 ```
+
 As we can see from the scree plot above, "cutting above the first elbow" leaves us with three principal components and is in good agreement with the "eigenvalues greater than one" findings above.
 
 These 3 Principal Components capture in order: Revenue & Cost Structure, Net Income and Return levels, and Capital Structure and Pre-Interes/Tax Earnings relation for the companies.
@@ -270,7 +278,6 @@ Let's take a look at boxplots of each stock's principal component values, groupe
 
 ```{r}
 par(mar=c(3,5,2,2))
-par(mfrow=c(1,3))
 boxplot(PC1 ~ Returns, data=PCA_Data, horizontal = T, ylab="", xlab="", main="PC1 by Returns", las=2)
 boxplot(PC2 ~ Returns, data=PCA_Data, horizontal = T, ylab="", xlab="", main="PC2 by Returns", las=2)
 boxplot(PC3 ~ Returns, data=PCA_Data, horizontal = T, ylab="", xlab="", main="PC3 by Returns", las=2)
@@ -280,6 +287,7 @@ In comparing the PCA values for the High, Low, and Mediocre return stocks for th
 ```{r}
 plot(PCA_Data[,-c(1,2)], col = 2*(as.numeric(PCA_Data$Returns)), pch = as.numeric(PCA_Data$Returns)+15, cex=1.2)
 ```
+
 An inspection of the principal components' projected scatters appears promising. All three groups (each has a different shape and color) seem to have a similar random scatter and "covariance footprint." In other words, it is likely that the data is multivariate Normal within groups, and the group covariance matricies are not significantly different from one another.
 
 ```{r}
@@ -287,6 +295,7 @@ CSQPlot(PCA_Data[which(PCA_Data$Returns == "Mediocre"),][-c(1,2)], label="Medioc
 CSQPlot(PCA_Data[which(PCA_Data$Returns == "High"),][-c(1,2)], label="High")
 CSQPlot(PCA_Data[which(PCA_Data$Returns == "Low"),][-c(1,2)], label="Low")
 ```
+
 Indeed, when the companies are grouped by their returns (either High, Low, or Mediocre), we see that the Chi-Square Quantile plots within groups are roughly linear and within the 95% confidence boundaries. Therefore, we can conclude that within groups, the data follows an approximately multivariate Normal distribution.
 ```{r}
 print("Covariance Matrix for Mediocre")
@@ -326,6 +335,7 @@ We also compute LDA with cross-validation which should be more indicative of the
 ```{r}
 partimat(Returns~PC1+PC2+PC3, data=PCA_Data, method="lda")
 ```
+
 We plot the projected classification LDA boundaries into PCA-space to better visualise the accuracy of the classification method. In plotting the classifications on two dimensions between PC1, PC2, and PC3, we find that in each case, the error rate is marginally better than guessing as the error rates are between 0.549 and 0.585. In visualizing the results, we see that the model is uniformly poor.
 
 ```{r}
