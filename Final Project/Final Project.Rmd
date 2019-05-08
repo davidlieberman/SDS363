@@ -1,10 +1,10 @@
 ---
 title: "S&DS363 Final Project"
 author: "Yavuz Ramiz Çolak, Ryo Tamaki, Liana Wang, David Lieberman"
-date: "May 4th, 2019"
+date: "May 8thth, 2019"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -134,8 +134,6 @@ CSQPlot<-function(vars,label="Chi-Square Quantile Plot"){
     lines(c(0,100),c(0,100),col=1)
     lines(quants,upper,col="blue",lty=2,lwd=2)
     lines(quants,lower,col="blue",lty=2,lwd=2)
-    legend(0,range(upper,lower)[2]*.9,c("Data","95% Conf Limits"),lty=c(0,2),col=c("red","blue"),lwd=c(2,2),
-      pch=c(19,NA))
 }
 ```
 Now, let's see if our data is approximately multivariate Normal using a chi-square quantile-quantile plot and seeing if the data all fall within the 95% confidence interval boundaries, denoted by the blue dotted lines on the graph below.
@@ -211,57 +209,13 @@ Looking at the loading coefficients for the first three principal components ("m
 
 \qquad These three variable all use capital structure as their numerator or denominator. Enterprise Value is Debt + Equity - Cash of the company, and these variables try to see the relation between Before Interest and Tax earnings of the company and its capital structure (Equity and Debt). So this principal component captures unique information about the Debt and Equity structure of the companies, and it makes sense that these three variables are grouped together. Also note that Equity/Assets and EV/EBITDA are positive while EBIT/EV are negative, this can be explained by the fact that in Equity/Assets and EV/EBITDA financial variables concerning the capital structure are in the numerator (i.e. Equity and Enterprise Value), and in EBIT/EV capital structure term is in the denominator (i.e. Enterprise Value).
 
+These 3 Principal Components capture in order: Revenue & Cost Structure, Net Income and Return levels, and Capital Structure and Pre-Interes/Tax Earnings relation for the companies.
+
 ```{r}
 screeplot(pc2,type="lines",col="red",lwd=2,pch=19,cex=1.2,main="Scree Plot")
 ```
 
 As we can see from the scree plot above, "cutting above the first elbow" leaves us with three principal components and is in good agreement with the "eigenvalues greater than one" findings above.
-
-These 3 Principal Components capture in order: Revenue & Cost Structure, Net Income and Return levels, and Capital Structure and Pre-Interes/Tax Earnings relation for the companies.
-```{r}
-ciscoreplot<-function(x,comps,namevec){
-  y1<-sqrt(5.99*(x$sdev[comps[1]]^2))
-  ymod<-y1-y1%%.05
-  y1vec<-c(-y1,seq(-ymod,ymod,by=0.05),y1)
-  y2vecpos<-sqrt((5.99-(y1vec^2)/x$sdev[comps[1]]^2)*x$sdev[comps[2]]^2)
-  y2vecneg<--sqrt((5.99-(y1vec^2)/x$sdev[comps[1]]^2)*x$sdev[comps[2]]^2)
-  y2vecpos[1]<-0
-  y2vecneg[1]<-0
-  y2vecpos[length(y2vecpos)]<-0
-  y2vecneg[length(y2vecneg)]<-0
-  plot(x$scores[,comps[1]],x$scores[,comps[2]],pch=19,cex=1.2,ylim=c(min(y2vecneg,x$scores[,comps[2]]),max(y2vecpos,x$scores[,comps[2]])),
-    main="PC Score Plot", xlab=paste("Scores for PC",comps[1],sep=" "), ylab=paste("Scores for PC",comps[2],sep=" "),
-    xlim=c(min(y1vec,x$scores[,comps[1]]),max(y1vec,x$scores[,comps[1]])))
-    lines(y1vec,y2vecpos,col="Red",lwd=2)
-    lines(y1vec,y2vecneg,col="Red",lwd=2)
-  outliers <-((x$scores[,comps[1]]^2)/(x$sdev[comps[1]]^2)+(x$scores[,comps[2]]^2)/(x$sdev[comps[2]]^2))>5.99
-  points(x$scores[outliers,comps[1]],x$scores[outliers,comps[2]],pch=19,cex=1.2,col="Blue")
-  text(x$scores[outliers,comps[1]],x$scores[outliers,comps[2]],col="Blue",lab=namevec[outliers], pos=4)
-}
-```
-
-INCLUDE INDUSTRY COLORING -- we would not call the outliers. A few on the edges, we would expect some anyways. Forget the confidence ellipse, but let's just color between the sectors.
-
-CANONICAL Correlation --> Double Principal Components: What combination of these variables is correlated with these variables. 
-
-```{r}
-ciscoreplot(pc1,c(1,2), working_data$ticker)
-```
-
-\\ NEED MORE ANALYSIS HERE
-
-```{r}
-ciscoreplot(pc1,c(1,3), working_data$ticker)
-```
-
-\\ NEED MORE ANALYSIS HERE
-
-```{r}
-ciscoreplot(pc1,c(2,3), working_data$ticker)
-```
-
-\\ NEED MORE ANALYSIS HERE
-
 
 Here are the numerical results we obtain from performing PCA and transforming our stock data into the PCA-space.
 ```{r}
@@ -272,12 +226,36 @@ PCA_Data <- data.frame(Returns, Sectors, PCA_Data)
 head(PCA_Data)
 ```
 
+```{r}
+print("Summary Statistics for PC1")
+paste("mean:", mean(PCA_Data$PC1))
+paste("sd:", sd(PCA_Data$PC1))
+
+print("Summary Statistics for PC2")
+paste("mean:", mean(PCA_Data$PC2))
+paste("sd:", sd(PCA_Data$PC2))
+
+print("Summary Statistics for PC3")
+paste("mean:", mean(PCA_Data$PC3))
+paste("sd:", sd(PCA_Data$PC3))
+
+
+layout(matrix(c(1, 0, 1,  3, 2, 3, 2, 0), nrow = 2, ncol = 4))
+invisible(qqPlot(PCA_Data$PC1, ylab="", main="PC1"))
+invisible(qqPlot(PCA_Data$PC2, ylab="", main="PC2"))
+invisible(qqPlot(PCA_Data$PC3, ylab="", main="PC3"))
+```
+
+Furthermore, the summary statistics show that the PCA components appear to have approximately equal means and standard deviations and appear to be approximately univariate Normal, so we won't restandardize the data later on.
+
 ## Section 2: Discriminant Analysis
 
 Let's take a look at boxplots of each stock's principal component values, grouped by returns. "High" means the percent change of the stock price positively outperformed by at least 150% the percent change in the SP500 between 2017-12-31 and 2018-12-31. "Low" means the stock price was at least 150% below the percent change in the SP500, while "Mediocre" means it hovered somewhere inbetween. We will be using the three principal components constructed above as our new working data, as they capture much of the variance of our original 11 continuous explanatory variables in only 3 dimensions and have the benefit of being, by construction, uncorrelated thus all but eliminating the multicollinearity once present in our data.
 
 ```{r}
+layout(matrix(c(1, 0, 1,  3, 2, 3, 2, 0), nrow = 2, ncol = 4))
 par(mar=c(3,5,2,2))
+
 boxplot(PC1 ~ Returns, data=PCA_Data, horizontal = T, ylab="", xlab="", main="PC1 by Returns", las=2)
 boxplot(PC2 ~ Returns, data=PCA_Data, horizontal = T, ylab="", xlab="", main="PC2 by Returns", las=2)
 boxplot(PC3 ~ Returns, data=PCA_Data, horizontal = T, ylab="", xlab="", main="PC3 by Returns", las=2)
@@ -291,9 +269,11 @@ plot(PCA_Data[,-c(1,2)], col = 2*(as.numeric(PCA_Data$Returns)), pch = as.numeri
 An inspection of the principal components' projected scatters appears promising. All three groups (each has a different shape and color) seem to have a similar random scatter and "covariance footprint." In other words, it is likely that the data is multivariate Normal within groups, and the group covariance matricies are not significantly different from one another.
 
 ```{r}
-CSQPlot(PCA_Data[which(PCA_Data$Returns == "Mediocre"),][-c(1,2)], label="Mediocre")
+layout(matrix(c(1, 0, 1,  3, 2, 3, 2, 0), nrow = 2, ncol = 4))
+
 CSQPlot(PCA_Data[which(PCA_Data$Returns == "High"),][-c(1,2)], label="High")
 CSQPlot(PCA_Data[which(PCA_Data$Returns == "Low"),][-c(1,2)], label="Low")
+CSQPlot(PCA_Data[which(PCA_Data$Returns == "Mediocre"),][-c(1,2)], label="Mediocre")
 ```
 
 Indeed, when the companies are grouped by their returns (either High, Low, or Mediocre), we see that the Chi-Square Quantile plots within groups are roughly linear and within the 95% confidence boundaries. Therefore, we can conclude that within groups, the data follows an approximately multivariate Normal distribution.
@@ -410,6 +390,8 @@ Support vector machine also has a cool "density" representation of its classific
 
 ## Section 3: Cluster Analysis
 
+**In this section, we will try to answer the following question: if we choose to cut our data into 10 clusters, will the companies be grouped roughly into their respective sectors?"**
+
 There are 10 Unique Industries in our dataset! 
 
 ```{r}
@@ -423,29 +405,17 @@ barplot(table(working_data$sector),
         names.arg = c("Discretionary", "Staples", "Energy", "Financials", "Healthcare", "Industrials", "IT", "Materials", "Real estate", "Utilities"),
         cex.names = .8, font.lab=2)
 title(ylab = "Sectors", line = 5)
-
 ```
-
-**In this section, we will try to answer the following question: if we choose to cut our data into 10 clusters, will the companies be grouped roughly into their respective sectors?"**
 
 ```{r}
-print("Summary Statistics for PC1")
-paste("mean:", mean(PCA_Data$PC1))
-paste("sd:", sd(PCA_Data$PC1))
-invisible(qqPlot(PCA_Data$PC1))
+par(mfrow=c(2,2))
 
-print("Summary Statistics for PC2")
-paste("mean:", mean(PCA_Data$PC2))
-paste("sd:", sd(PCA_Data$PC2))
-invisible(qqPlot(PCA_Data$PC2))
-
-print("Summary Statistics for PC3")
-paste("mean:", mean(PCA_Data$PC3))
-paste("sd:", sd(PCA_Data$PC3))
-invisible(qqPlot(PCA_Data$PC3))
+for (name in unique(Sectors)){
+  CSQPlot(PCA_Data[which(Sectors==name),][-c(1:2)], label=name)
+}
 ```
 
-The summary statistics show that the PCA components appear to have approximately equal means and standard deviations and appear to be approximately univariate Normal, so we won't restandardize the data.
+According to these Chi-square quantile plots, within each sector, the data appears to have an approximately multivariate Normal distribution.
 
 When we cut on 10 clusters, here are the results we obtain.
 ```{r}
@@ -516,107 +486,43 @@ Likewise, cluster 10 has the lowest membership rate for financials, and we can s
 
 **At the end of cluster analysis, we get 10 clusters which did not match the original preassigned industries. However, we can draw out similar characteristics among the stocks to see that the clusters roughly describe: 1) industrial technology, 2) home and travel discretionary spending, 3) pharmaceutical and chemical production, 4) health equipment and other engineered products, 5) utilities and consumer credit, 6) large banks and financial institutions, 7) personal products discretionary spending, 8) multistrategy investment management firms, 9) real estate, and 10) insurance financial firms.**
 
+```{r}
+ggplot(PCA_Data, aes(x=PC1, y=PC2, col=as.integer(factor(Sectors)))) + geom_point(size = 3, aes(pch=18, col=factor(Sectors))) + stat_ellipse(size=1.5, col="red") + scale_shape_identity() +
+  ggtitle("Companies by Sector in PC1 vs PC2 Space") + theme(plot.title = element_text(size=15), legend.title=element_blank())
+
+ggplot(PCA_Data, aes(x=PC1, y=PC3, col=as.integer(factor(Sectors)))) + geom_point(size = 3, aes(pch=18, col=factor(Sectors))) + stat_ellipse(size=1.5, col="red") + scale_shape_identity() +
+  ggtitle("Companies by Sector in PC1 vs PC3 Space") + theme(plot.title = element_text(size=15), legend.title=element_blank())
+
+ggplot(PCA_Data, aes(x=PC2, y=PC3, col=as.integer(factor(Sectors)))) + geom_point(size = 3, aes(pch=18, col=factor(Sectors))) + stat_ellipse(size=1.5, col="red") + scale_shape_identity() +
+  ggtitle("Companies by Sector in PC2 vs PC3 Space") + theme(plot.title = element_text(size=15), legend.title=element_blank())
+```
+
+Projecting down into 2D PCA-space and coloring by industry, we can see that no single industry seems to be particularly distinct/sequestered/outlier, and that for the most part, the industries seem to be spread relatively uniformly across all three principal components.
+
 ## Section 4: MANOVA
 
 Let's take a look at boxplots of each stock's principal component values, grouped by industry.
 ```{r}
 par(mar=c(3,15,2,2))
-boxplot(PC1 ~ Sectors, data=PCA_Data, horizontal = T, main="PC1 by Industry", las=2)
-boxplot(PC2 ~ Sectors, data=PCA_Data, horizontal = T, main="PC2 by Industry", las=2)
-boxplot(PC3 ~ Sectors, data=PCA_Data, horizontal = T, main="PC3 by Industry", las=2)
+boxplot(PC1 ~ Sectors, data=PCA_Data, horizontal = T, main="PC1 by Industry", ylab="", las=2)
+boxplot(PC2 ~ Sectors, data=PCA_Data, horizontal = T, main="PC2 by Industry", ylab="", las=2)
+boxplot(PC3 ~ Sectors, data=PCA_Data, horizontal = T, main="PC3 by Industry", ylab="", las=2)
 ```
 
-```{r}
-ggplot(PCA_Data, aes(x=PC1, y=PC2, col=as.integer(factor(Sectors)))) + geom_point(size = 3, aes(pch=18, col=factor(Sectors))) + scale_shape_identity() +
-  ggtitle("Companies by Sector in PC1 vs PC2 Space") + theme(plot.title = element_text(size=15), legend.title=element_blank())
+These boxplots provide a bit more detailed insight into what was alluded to above. While it was somewhat difficult to discern which sectors, if any, seemed to have any substantial deviations with respect to the others, these boxplots reveal that there may be some differences after all, particularly in PC1 which concerns revenue and costs of goods sold.
 
-ggplot(PCA_Data, aes(x=PC1, y=PC3, col=as.integer(factor(Sectors)))) + geom_point(size = 3, aes(pch=18, col=factor(Sectors))) + scale_shape_identity() +
-  ggtitle("Companies by Sector in PC1 vs PC3 Space") + theme(plot.title = element_text(size=15), legend.title=element_blank())
-
-ggplot(PCA_Data, aes(x=PC2, y=PC3, col=as.integer(factor(Sectors)))) + geom_point(size = 3, aes(pch=18, col=factor(Sectors))) + scale_shape_identity() +
-  ggtitle("Companies by Sector in PC2 vs PC3 Space") + theme(plot.title = element_text(size=15), legend.title=element_blank())
-```
-
-```{r}
-ciscoreplot<-function(x,comps,namevec){
-  y1<-sqrt(5.99*(x$sdev[comps[1]]^2))
-  ymod<-y1-y1%%.05
-  y1vec<-c(-y1,seq(-ymod,ymod,by=0.05),y1)
-  y2vecpos<-sqrt((5.99-(y1vec^2)/x$sdev[comps[1]]^2)*x$sdev[comps[2]]^2)
-  y2vecneg<--sqrt((5.99-(y1vec^2)/x$sdev[comps[1]]^2)*x$sdev[comps[2]]^2)
-  y2vecpos[1]<-0
-  y2vecneg[1]<-0
-  y2vecpos[length(y2vecpos)]<-0
-  y2vecneg[length(y2vecneg)]<-0
-  plot(x$scores[,comps[1]],x$scores[,comps[2]],pch=19,col=unique(as.factor(Sectors)), cex=1.2,ylim=c(min(y2vecneg,x$scores[,comps[2]]),max(y2vecpos,x$scores[,comps[2]])),
-    main="PC Score Plot", xlab=paste("Scores for PC",comps[1],sep=" "), ylab=paste("Scores for PC",comps[2],sep=" "),
-    xlim=c(min(y1vec,x$scores[,comps[1]]),max(y1vec,x$scores[,comps[1]])))
-    lines(y1vec,y2vecpos,col="Red",lwd=2)
-    lines(y1vec,y2vecneg,col="Red",lwd=2)
-  legend("bottomleft", legend=unique(as.factor(Sectors)), col=unique(as.factor(Sectors)), pch=19, cex=.8)
-}
-```
-
-Colored by S&P500 industry
-```{r}
-ciscoreplot(pc1,c(1,2), PCA_Data$ticker)
-```
-
-Colored by Clustering
-```{r}
-ciscoreplot<-function(x,comps,namevec){
-  y1<-sqrt(5.99*(x$sdev[comps[1]]^2))
-  ymod<-y1-y1%%.05
-  y1vec<-c(-y1,seq(-ymod,ymod,by=0.05),y1)
-  y2vecpos<-sqrt((5.99-(y1vec^2)/x$sdev[comps[1]]^2)*x$sdev[comps[2]]^2)
-  y2vecneg<--sqrt((5.99-(y1vec^2)/x$sdev[comps[1]]^2)*x$sdev[comps[2]]^2)
-  y2vecpos[1]<-0
-  y2vecneg[1]<-0
-  y2vecpos[length(y2vecpos)]<-0
-  y2vecneg[length(y2vecneg)]<-0
-  plot(x$scores[,comps[1]],x$scores[,comps[2]],pch=19,col=as.factor(names(cluster_analytics)), cex=1.2,ylim=c(min(y2vecneg,x$scores[,comps[2]]),max(y2vecpos,x$scores[,comps[2]])),
-    main="PC Score Plot", xlab=paste("Scores for PC",comps[1],sep=" "), ylab=paste("Scores for PC",comps[2],sep=" "),
-    xlim=c(min(y1vec,x$scores[,comps[1]]),max(y1vec,x$scores[,comps[1]])))
-    lines(y1vec,y2vecpos,col="Red",lwd=2)
-    lines(y1vec,y2vecneg,col="Red",lwd=2)
-  legend("bottomleft", legend=unique(as.factor(names(cluster_analytics))), col=unique(as.factor(names(cluster_analytics))), pch=19, cex=.8)
-}
-```
-
-```{r}
-ciscoreplot(pc1,c(1,2), PCA_Data$ticker)
-```
-
-
-
-
-
-\\ NEED MORE ANALYSIS HERE
-
-```{r}
-for (name in unique(Sectors)){
-  CSQPlot(PCA_Data[which(Sectors==name),][-c(1:2)], label=name)
-}
-```
-
-We see that the data is broadly multivariate normal in each industry! 
+Let's run a MANOVA Wilks Lambda test to determine if there are in fact statistically significant differences in the multivariate means across all 10 sectors.
 
 ```{r}
 manova_sp500 <- manova(as.matrix(PCA_Data[-c(1:2)])~factor(PCA_Data$Sectors))
 summary.manova(manova_sp500, test="Wilks")
 ```
 
-Here we see that we have a significant F value. With our MANOVA results, we conclude that sectors, which are our independent variables, affect the differences in key financial ratios and variables. Given that changes in key financial ratios can notably affect stock price performance, certain industries/sub-industries could also perhaps contribute to the positive/negative performance of a given stock at a given time period.
+Yes, the p-value is tiny! Thus was have reason to **reject the null hypothesis** that the differences in the multivariate means are 0 (any observed differences would have been due to chance alone -- not!), and therefore there is evidence that membership to a particular sector may be indicative of more wide-reaching differences in key financial ratios and performance metrics. Given that changes in key financial ratios can notably affect stock price performance, certain industries/sub-industries could also perhaps contribute to the positive/negative performance of a given stock at a given time period.
 
-Our Wilks Lambda is 0.3141. While we would like to ideally have a Wilks Lambda of 0, and achieve total discrimination across independent variables, given the imperfect differences across sectors, our Wilks Lambda is at an acceptabl level, contributing to the conclusion that the dependent financial ratios are notably different across sectors. But as said earlier, there is some variance that is not explained by independent variables. 
+## SOMEBODY PLEASE WRITE SOMETHING ECON!! 
 
-Finally, we check to make sure residuals have a multivariate normal distribution (which we expect will be true based on normality in each group).
-
-```{r}
-CSQPlot(manova_sp500$residuals,label="Residuals from S&P500 Data MANOVA")
-```
-
-CONTRAST HERE between Financials and Healthcare
+Between 2017-12-31 and 2018-12-31, the financial sector stock far outperformed the healthcare sector. Therefore, if the financial ratio and performance metric explanatory variables we are tracking do indeed have predictive power of future performance we might have reason to suspect that the financial sector multivariate mean would be significantly different than the healthcare sector multivariate mean.
 
 ```{r}
 source("https://raw.githubusercontent.com/davidlieberman/SDS363/master/PSet5/multicontrast.R")
@@ -625,10 +531,19 @@ sorted <- order(PCA_Data$Sectors)
 unique(PCA_Data$Sectors[sorted])
 ```
 
-```{r}
+```{r, echo=TRUE}
 multicontrast(c(0,0,0,1,-1,0,0,0,0,0), PCA_Data[sorted,3:5], PCA_Data$Sectors[sorted])
 ```
 
+Yes! The F-statistic is MASSIVE and the p-value is 0.00000. Therefore we **reject the null hypothesis** that the differences in the multivariate means is due to chance alone, and there is reason to suspect that the difference between the multivariate means on 2017-12-31 is due to the fact that ultimately one would evolve to be an extremely lucrative investment while the other would flop.
+
+Just to verify, do our MANOVA residuals follow a multivariate Normal distribution, as we would expect? Otherwise we might be performing tests that aren't especially appropriate.
+
+```{r}
+CSQPlot(manova_sp500$residuals,label="Residuals from S&P500 Data MANOVA")
+```
+
+Yes, they do. All good.
 
 ## Final Interpretations
 
@@ -637,8 +552,5 @@ multicontrast(c(0,0,0,1,-1,0,0,0,0,0), PCA_Data[sorted,3:5], PCA_Data$Sectors[so
 
 
 ## Conclusion
-
-
-## Addendum
 
 
