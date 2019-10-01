@@ -1,10 +1,9 @@
 ---
 title: "S&DS363 Final Project"
-author: "David Lieberman, Yavuz Ramiz Çolak, Ryo Tamaki, Liana Wang"
+author: "David Lieberman, Yavuz Ramiz Çolak, Liana Wang, Ryo Tamaki"
 date: "May 8th, 2019"
 output:
   html_document: default
-  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -53,7 +52,6 @@ Our dataset follows 335 S&P500 companies with 16 different variables quantifying
 * We will conduct Principal Component Analysis (PCA) to determine which performance metrics tend to vary greatly between stocks. Our PCA will yield a few uncorrelated principal components in the directions of greatest variance, reducing the overall dimensionality of our data. PCA will also allow us to see which performance metrics tend to correlate with one another (their weights within principal components), and effectively eliminate any correlation between variables to avoid bias that would be introduced by multicollinearity.
 
 * We will use Discriminant Analysis (DA). This method will allow us to see which principal components (and by extension the performance metrics contained in their loading coefficients) are most important for discriminanting between companies that did or did not outperform the SP500 during that same timeframe.
-
 
 * We will use Cluster Analysis and MANOVA to investigate if there are particular performance metrics indicative of a stock's membership to a given sector, and/or any significant differences between sector mean financials.  
 
@@ -143,7 +141,6 @@ CSQPlot(data_transformed, label="data_transformed")
 
 As we can see, our data is very far from multivariate Normal -- nearly all of the data lie outside the 95% confidence limits on the chi-square quantile-quantile plot.
 
-
 ## Section 1: Principal Components Analysis
 
 Let's construct a correlation matrix for our data. Hopefully, some variables will be highly correlated so our data will be a good match for Principal Component Analysis.
@@ -151,7 +148,6 @@ Let's construct a correlation matrix for our data. Hopefully, some variables wil
 correlation_matrix <- setattr(as.data.frame(round(cor(data_transformed), 2)), "row.names", names(data_transformed))
 kable(correlation_matrix) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), font_size = 11)
 ```
-
 
 Now we sort the correlations by largest magnitude and display the first six entries.
 ```{r, echo=TRUE}
@@ -204,7 +200,6 @@ Looking at the loading coefficients for the first three principal components ("m
 
 \qquad These four variables are trying to measure return on investments. ROA (Return on Assets), ROE (Return on Equity), ROIC (Return on Invested Capital) and Net Margin all have net income as their numerator. Therefore, these ratios are high when net income is high, and not so significant when net income is low. It is expected that these variables be grouped together in PCA. 
 
-
 * Third Principal Component Major Contributors: equity_assets (0.434), ebit_ev (-0.541), ev_ebitda (0.574). 
 
 \qquad These three variable all use capital structure as their numerator or denominator. Enterprise Value is Debt + Equity - Cash of the company, and these variables try to see the relation between Before Interest and Tax earnings of the company and its capital structure (Equity and Debt). So this principal component captures unique information about the Debt and Equity structure of the companies, and it makes sense that these three variables are grouped together. Also note that Equity/Assets and EV/EBITDA are positive while EBIT/EV are negative, this can be explained by the fact that in Equity/Assets and EV/EBITDA financial variables concerning the capital structure are in the numerator (i.e. Equity and Enterprise Value), and in EBIT/EV capital structure term is in the denominator (i.e. Enterprise Value).
@@ -246,7 +241,7 @@ invisible(qqPlot(PCA_Data$PC2, ylab="", main="PC2"))
 invisible(qqPlot(PCA_Data$PC3, ylab="", main="PC3"))
 ```
 
-Furthermore, the summary statistics show that the PCA components appear to have approximately equal means and standard deviations and appear to be approximately univariate Normal, so we won't restandardize the data later on.
+Furthermore, the summary statistics show that the PCA components appear to have approximately equal means and standard deviations and appear to be approximately univariate Normal, so we won't restandardize the data later on. 
 
 ## Section 2: Discriminant Analysis
 
@@ -262,6 +257,7 @@ boxplot(PC3 ~ Returns, data=PCA_Data, horizontal = T, ylab="", xlab="", main="PC
 ```
 
 In comparing the PCA values for the High, Low, and Mediocre return stocks for the first three dimensions, we notice that the distribution of PCA values by returns appears largely symmetric. With this symmetry, we note that the our boxplots of the principle components suggest an approximately normal distribution for each group. However it should also be noted that there is some skewness for the mediocre returns grouping in the second principle component and in the high returns grouping for the third principle component.
+
 ```{r}
 plot(PCA_Data[,-c(1,2)], col = 2*(as.numeric(PCA_Data$Returns)), pch = as.numeric(PCA_Data$Returns)+15, cex=1.2)
 ```
@@ -277,20 +273,21 @@ CSQPlot(PCA_Data[which(PCA_Data$Returns == "Mediocre"),][-c(1,2)], label="Medioc
 ```
 
 Indeed, when the companies are grouped by their returns (either High, Low, or Mediocre), we see that the Chi-Square Quantile plots within groups are roughly linear and within the 95% confidence boundaries. Therefore, we can conclude that within groups, the data follows an approximately multivariate Normal distribution.
+
 ```{r}
-print("Covariance Matrix for Mediocre")
-cov(PCA_Data[PCA_Data$Returns == "Mediocre", 3:5])
-print(c("log-determinant", log(det(cov(PCA_Data[PCA_Data$Returns == "Mediocre", 3:5])))))
 print("Covariance Matrix for High")
 cov(PCA_Data[PCA_Data$Returns == "High", 3:5])
 print(c("log-determinant", log(det(cov(PCA_Data[PCA_Data$Returns == "High", 3:5])))))
 print("Covariance Matrix for Low")
 cov(PCA_Data[PCA_Data$Returns == "Low", 3:5])
 print(c("log-determinant", log(det(cov(PCA_Data[PCA_Data$Returns == "Low", 3:5])))))
+print("Covariance Matrix for Mediocre")
+cov(PCA_Data[PCA_Data$Returns == "Mediocre", 3:5])
+print(c("log-determinant", log(det(cov(PCA_Data[PCA_Data$Returns == "Mediocre", 3:5])))))
 boxM(PCA_Data[,c("PC1","PC2","PC3")], PCA_Data$Returns)
 ```
 
-In computing the covariance matrices, by visual inspection, we note that the covariance matrices seem reasonably similar across groups. That the covariance matrices are similar is supported by the p-value (0.0629) of the Box-M test, suggesting that there is no statistically significant difference between each group's covariance matrix. As there are no statistically significant differences in covariance matrices, our data are suitable for Linear Discriminant Analysis (LDA).
+In computing the covariance matrices, by visual inspection, we note that the covariance matrices seem reasonably similar across groups. This observation is supported by the p-value (0.0629) of the Box-M test, suggesting that there is no statistically significant difference between each group's covariance matrix; therefore, our data are suitable for Linear Discriminant Analysis (LDA).
 
 LDA, no cross-validation
 ```{r}
@@ -366,7 +363,7 @@ success_rate <- colMeans(results)[best_k]
 success_rate
 ```
 
-Leaving out one point, and predicting its group using the k-nearest neighbor method, and repeating this for all 335 points in our dataset, this method predicts the group with approximately `r success_rate` success rate... Even worse than LDA :( We also did parameter tuning to determine the k that gave the greatest prediction accuracy, which yielded k=`r best_k`
+Leaving out one point, and predicting its group using the k-nearest neighbor method, and repeating this for all 335 points in our dataset, this method predicts the group with approximately `r success_rate` success rate... Even worse than LDA. We also did parameter tuning to determine the k that gave the greatest prediction accuracy, which yielded k=`r best_k`
 
 We will also try a machine learning technique: Support-Vector Machine, ML binary classification method, with cross-validation. In addition to the cross-validation of our final model's predictive ability, we will also evaluate several potential models by tuning the SVM parameters until we select one that achieves the best results. 
 ```{r, echo=TRUE}
@@ -386,14 +383,13 @@ plot(ksvm(Returns~PC1+PC3, data=svm_data))
 plot(ksvm(Returns~PC2+PC3, data=svm_data))
 ```
 
-Support vector machine also has a cool "density" representation of its classification boundaries/confidence, analogous to the ggplots we constructed earlier for LDA classifications. We can see the model's Guassian classification regions (not linear like LDA) and its classification confidence by its increasing color intensity (white-banded regions are the uncertainty of the boundary conditions). It should be noted though that, 1) this model also didn't do a great job, so this is mostly for visual appeal rather than a true partition of space according to accurate classification, and 2) this R function can only take two arguements, so we were forced to put our stocks into strictly "Higher" or "Lower" (no Mediocre group), so this graph is somewhat different from the previous pictures (however, the SVM numerical classifications above did use all three groups).
+Support vector machine also has a cool "density" representation of its classification boundaries/confidence, analogous to the ggplots we constructed earlier for LDA classifications. We can see the model's Guassian classification regions (not linear like LDA) and its classification confidence by its increasing color intensity (white-banded regions are the uncertainty of the boundary conditions). It should be noted though that, 1) this model also didn't do a great job, so this is mostly for visual appeal rather than a true partition of space according to accurate classification, and 2) this R function can only take two arguments, so we were forced to put our stocks into strictly "Higher" or "Lower" (no Mediocre group), so this graph is somewhat different from the previous pictures (however, the SVM numerical classifications above did use all three groups).
 
 ## Section 3: Cluster Analysis
 
-**In this section, we will try to answer the following question: if we choose to cut our data into 10 clusters, will the companies be grouped roughly into their respective sectors?"**
+In this section, we will try to answer the following question: **"If we choose to cut our data into 10 clusters, will the companies be grouped roughly into their respective sectors?"** Answering this question will help us consider clustering and predicting within industries. One motivation behind this is that at a given year, some industries  may be subject to unique industry-specific shocks that are not captured by the financial variables we used to predict stock-price performance.
 
 There are 10 Unique Industries in our dataset! 
-
 ```{r}
 par(mar=c(5, 8, 3, 3))
 barplot(table(working_data$sector), 
@@ -417,11 +413,11 @@ for (name in unique(Sectors)){
 
 According to these Chi-square quantile plots, within each sector, the data appears to have an approximately multivariate Normal distribution.
 
-When we cut on 10 clusters, here are the results we obtain.
+We tested a couple of different ways to perform cluster analysis to try and find the distance-linkage combination that maximizes the mean membership rate across all clusters, while also giving us the most distinct clusters. We tested different distance ("euclidean" vs. "manhattan") and linkage/clustering methods ("single", "complete," and "average"), and ultimately settled on using *"Euclidean"* distance and *"complete"* linkages, which makes sense: "complete" linkages use the maximum distance between clusters and tend to make trees with distinct clusters, while also being less sensitive to noisy data. When we cut on 10 clusters, here are the results we obtain:
 ```{r}
 data_dist <- dist(PCA_Data[,-c(1,2)], method = "euclidean")
 data_clust <- hclust(data_dist, method = "complete")
-plot(data_clust, labels = FALSE, xlab="Cluster groups",ylab="Distance", main="Clustering for Stocks", cex = .5)
+plot(data_clust, labels = FALSE, xlab="Cluster groups",ylab="Distance", main="Clustering for Stocks", cex = 0.5)
 rect.hclust(data_clust, k=10) #10 Sectors
 ```
 
@@ -445,9 +441,7 @@ cluster_analytics
 mean(classifications)
 ```
 
-We tested a couple of different ways to perform cluster analysis, including different distance ("euclidean" vs. "manhattan") and linkage/clustering methods ("single", "complete," and "average"). Using the code above, we can determine what proportion of each cluster is made up of stocks/companies from the highest represented industry, which we call the "membership rate." For example, if in cluster 1 the largest proportion of stocks belong to Industry A, the membership rate would be that proportion. 
-
-We decided to use the distance-linkage combination which maximized the mean membership rate across all clusters, while also giving us the most distinct clusters. This turns out to be using *"Euclidean"* distance and *"complete"* linkages, which makes sense: "complete" linkages use the maximum distance between clusters and tend to make trees with distinct clusters, while also being less sensitive to noisy data. This gives us an average membership rate of 0.3642. Listing our clusters by the industry most represented in each with the proportion of represented gives us the following results:
+We can determine what proportion of each cluster is made up of stocks/companies from the highest represented industry, which we call the "membership rate." For example, if in cluster 1 the largest proportion of stocks belong to Industry A, the membership rate would be that proportion. This gives us an average membership rate of 0.3642. Listing our clusters by the industry most represented in each with the proportion of represented gives us the following results:
 
 ```{r}
 industries <- c("Industrials","Consumer Discretionary","Health Care","Health Care","Utilities","Financials","Consumer Discretionary","Financials","Real Estate","Financials")
@@ -518,39 +512,35 @@ manova_sp500 <- manova(as.matrix(PCA_Data[-c(1:2)])~factor(PCA_Data$Sectors))
 summary.manova(manova_sp500, test="Wilks")
 ```
 
-Yes, the p-value is tiny! Thus was have reason to **reject the null hypothesis** that the differences in the multivariate means are 0 (any observed differences would have been due to chance alone -- not!), and therefore there is evidence that membership to a particular sector may be indicative of more wide-reaching differences in key financial ratios and performance metrics. Given that changes in key financial ratios can notably affect stock price performance, certain industries/sub-industries could also perhaps contribute to the positive/negative performance of a given stock at a given time period.
+Yes, the p-value is tiny! Thus was have reason to **reject the null hypothesis** that the differences in the multivariate means are 0 (any observed differences would have been due to chance alone -- not!), and therefore there is evidence that membership to a particular sector may be indicative of more wide-reaching differences in key financial ratios and performance metrics. 
 
-## SOMEBODY PLEASE WRITE SOMETHING ECON!! 
+Two sectors that are potentially responsible for this difference are Financials and Healthcare. Between 2017-12-31 and 2018-12-31, the financial sector stock far outperformed the healthcare sector. There are two potential real life explanations for this performance disparity. Given the overvaluation risk surrounding the various pharma and biotech companies, when global growth slowed down and uncertainty about financial outlook increased towards the end of 2018, healthcare sector was more heavily penalized. Moreover, in this risky environment, central banks became dovish for interest rates and decided to ensure financial stability--which created a relatively positive environment for the financials sector. The increased riskiness and higher debt levels of the healthcare sector are captured within our model through given financial ratios, but the external shock including global growth slowdown are not reflected in our prediction model.
 
-Between 2017-12-31 and 2018-12-31, the financial sector stock far outperformed the healthcare sector. Therefore, if the financial ratio and performance metric explanatory variables we are tracking do indeed have predictive power of future performance we might have reason to suspect that the financial sector multivariate mean would be significantly different than the healthcare sector multivariate mean.
+If the financial ratio and performance metric explanatory variables we are tracking do indeed have predictive power of future performance we might have reason to suspect that the Financial sector multivariate mean would be significantly different than the Healthcare sector multivariate mean.
 
 ```{r}
-source("https://raw.githubusercontent.com/davidlieberman/SDS363/master/PSet5/multicontrast.R")
-
 sorted <- order(PCA_Data$Sectors)
 unique(PCA_Data$Sectors[sorted])
 ```
 
 ```{r, echo=TRUE}
+source("https://raw.githubusercontent.com/davidlieberman/SDS363/master/PSet5/multicontrast.R")
 multicontrast(c(0,0,0,1,-1,0,0,0,0,0), PCA_Data[sorted,3:5], PCA_Data$Sectors[sorted])
 ```
 
 Yes! The F-statistic is MASSIVE and the p-value is 0.00000. Therefore we **reject the null hypothesis** that the differences in the multivariate means is due to chance alone, and there is reason to suspect that the difference between the multivariate means on 2017-12-31 is due to the fact that ultimately one would evolve to be an extremely lucrative investment while the other would flop.
 
-Just to verify, do our MANOVA residuals follow a multivariate Normal distribution, as we would expect? Otherwise we might be performing tests that aren't especially appropriate.
+We finally want to verify if our MANOVA residuals follow a multivariate Normal distribution, as we would expect. Otherwise we might be performing tests that aren't especially appropriate.
 
 ```{r}
 CSQPlot(manova_sp500$residuals,label="Residuals from S&P500 Data MANOVA")
 ```
 
-Yes, they do. All good.
-
-## Final Interpretations
-
-
-## Limitations & Further Research
+Yes, they do. Our MANOVA analysis is reliable!
 
 
 ## Conclusion
 
+\qquad To summarize our steps, we first conducted PCA and picked 3 principle components that captured high variability in our data. We then performed Linear Discriminant Analysis, k-Nearest Neighbor, and Support Vector Machine using our 3 Principal Components to see if we can predict a company's stock price performance relative to the stock price performance of S&P 500 index. However, while our prediction was more informed than blind prediction, we were not able to obtain a reliable model that would make profitable projections. We then asked if we could gain more information about financial ratios across industries. We tried to use cluster analysis to see if industry clusters would arrise naturally from our data if we grouped on 10 clusters, but more successfully, in our MANOVA study, we saw that multivariate mean across all industries is not strictly conserved. 
 
+\qquad Overall, we learned that while key financial ratios are somewhat informative about a company's stock performance in a given year, they alone cannot accurately predict to the degree that one can rely on the prediction results and hope to achieve positive financial gains from investing in high performing stocks. These results are undesrstandable. Part of the reason our model may be failing to capture high accuracy is that it has limited input. A company's stock price performance depends on many factor that are hard to quantify: Management Quality, Pressures from Suppliers, Pressures from Competitors, Overvaluation Risks, Market Sentiment about the Company, etc. Yet, our project and models are still useful when combined with additional qualitative analysis. We see that our model successfully captures the differences across industries, and outliers within industries (even though we recognize we did remove extreme outliers at the outset). Using our model, we can identify the companies with significantly strong financial ratios that are above industry average and call them potential targets. We can also identify the companies with significantly poor financial ratios that are notably below industry average and call them risky companies. We can use these groups as a screen, we can avoid very risky companies, and conduct more careful analysis on the selected potential targets. With this, we can save research time, identify companies with great potential to carefully study these companies with high potential of outperforming S&P 500 and bringing significant returns to investors.
